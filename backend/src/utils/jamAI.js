@@ -37,8 +37,9 @@ export async function addTextRow(textMess) {
 
 // Test JamAI 
 //THIS IS JUST FOR TESTING PURPOSE ONLY. REMOVE LATER.
+/*
 (async () => {
   const result = await addTextRow("This is a sample text to check for scam.");
   console.log("Test output:", result);
-})();
+})();*/
 
