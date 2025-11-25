@@ -1,24 +1,45 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'record_service.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+
+  static Function(String actionId)? onActionReceived;
 
   static Future init() async {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (details) {
+        final actionId = details.actionId;
+        if (actionId != null) {
+          print("🔔 ACTION PRESSED → $actionId");
+          onActionReceived?.call(actionId);
+        }
+      },
+    );
   }
 
   static Future showUnknownCaller(String number) async {
     const androidDetails = AndroidNotificationDetails(
-      'unknown_call_channel',
-      'Unknown Call Alerts',
-      channelDescription: 'Notifies user when caller is not in contacts',
+      'call_alert',
+      'Call Alerts',
+      channelDescription: 'Alerts for unknown callers',
       importance: Importance.max,
       priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
+      ongoing: true,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'START_RECORD',
+          'Yes, record',
+        ),
+        AndroidNotificationAction(
+          'STOP_RECORD',
+          'No',
+        ),
+      ],
     );
 
     const notificationDetails = NotificationDetails(android: androidDetails);

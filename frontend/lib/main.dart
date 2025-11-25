@@ -33,7 +33,24 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     NotificationService.init();
     _initForegroundTask();
+    _listenNotificationActions();
     listenToCallState();
+  }
+
+  void _listenNotificationActions() {
+    NotificationService.onActionReceived = (actionId) async {
+      print("🔔 ACTION → $actionId");
+
+      if (actionId == 'START_RECORD') {
+        CallRecorder.userApproved = true;
+        print("🎤 User approved — will start after call connects");
+      }
+
+      if (actionId == 'STOP_RECORD') {
+        CallRecorder.userApproved = false;
+        print("❌ User declined recording");
+      }
+    };
   }
 
   void _initForegroundTask() {
