@@ -1,9 +1,18 @@
 import JamAI from "jamaibase";
+import 'dotenv/config';
+
 
 const jamai = new JamAI({
-  token: "jamai_pat_088e57c5c7582f1b0f819a3df74f3ed844e87044ffc8091d", //removeeeeeeeeeeeeeeeee before commit
-  projectId: "proj_1e9d442c28ddd05c8092b95e" //removeeeeeeeeeeeeeeeee before commit
+  token: "",
+  projectId: ""
 });
+
+/*
+const jamai = new JamAI({
+  token: process.env.token,
+  projectId: process.env.projectId
+});*/
+
 
 export async function addTextRow(textMess) {
   try {
@@ -11,13 +20,13 @@ export async function addTextRow(textMess) {
       table_type: "action",
       table_id: "text-detect-scam",
       data: [{
-        text:textMess
+        text: textMess
       }]
     });
 
-    const aiOutput = result.rows[0].columns['justification-scam'].choices[0].message.content;
-    //console.log("✅ AI Output Text:", aiOutput);
-    return aiOutput;
+    const aiResult = result.rows[0].columns['explanation'].choices[0].message.content;
+    //console.log("✅ AI Output Text from jamai:", aiResult);
+    return aiResult;
 
   } catch (err) {
     console.error("❌ JamAI API Message:", err.message);
@@ -25,4 +34,10 @@ export async function addTextRow(textMess) {
   }
 }
 
+
+// Test JamAI
+(async () => {
+  const result = await addTextRow("This is a sample text to check for scam.");
+  console.log("Test output:", result);
+})();
 

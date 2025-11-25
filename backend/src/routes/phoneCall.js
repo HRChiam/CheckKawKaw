@@ -1,4 +1,4 @@
-const express = require('express');
+import express from "express";
 const router = express.Router();
 
 router.post('/start', (req, res) => {
@@ -9,4 +9,4 @@ router.post('/end', (req, res) => {
     res.json({ success: true, message: 'Phone call end endpoint working!' });
 });
 
-module.exports = router;
+export default router;

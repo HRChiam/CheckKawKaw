@@ -9,7 +9,7 @@ class TextAPI {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'text': message}),
+        body: jsonEncode({'textMess': message}),
       );
 
       if (response.statusCode == 200) {

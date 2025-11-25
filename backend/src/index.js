@@ -1,12 +1,14 @@
-require('dotenv').config(); // Load .env
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
+import dotenv from 'dotenv';
+dotenv.config();
 
-const textRoutes = require('./routes/text');
-const imageRoutes = require('./routes/image');
-const audioRoutes = require('./routes/audio');
-const phoneCallRoutes = require('./routes/phoneCall');
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+
+import textRoutes from './routes/text.js';
+import imageRoutes from './routes/Image.js';
+import audioRoutes from './routes/audio.js';
+import phoneCallRoutes from './routes/phoneCall.js';
 
 const app = express();
 
