@@ -23,8 +23,26 @@ app.use('/detect/image', imageRoutes);
 app.use('/detect/audio', audioRoutes);
 app.use('/phone', phoneCallRoutes);
 
+process.on('exit', (code) => {
+    console.log(`⚠️  Process is exiting with code: ${code}`);
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', (err) => {
+    if (err) {
+        console.error("❌ Error starting server:", err);
+        return;
+    }
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`   Accessible locally at http://localhost:${PORT}`);
+});
+
+// Handle server errors (like port already in use)
+server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+        console.log('❌ Port 3000 is already in use!');
+    } else {
+        console.log('❌ Server error:', e);
+    }
 });

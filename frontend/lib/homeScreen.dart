@@ -1,10 +1,11 @@
+import 'dart:convert'; // Import for JSON
 import 'package:flutter/material.dart';
-import 'main.dart'; // To access AppTheme
-import 'analysisScreen.dart'; // To navigate to results
+import 'package:http/http.dart' as http; // Import HTTP package
+import 'main.dart'; 
+import 'analysisScreen.dart'; 
 
 enum InputType { text, image, audio }
 
-//  MAIN HOME (Input) ---
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -17,44 +18,77 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   InputType _inputType = InputType.text; 
 
+  // REPLACE WITH YOUR IP. 
+  // Android Emulator: 'http://10.0.2.2:3000'
+  // iOS Simulator: 'http://localhost:3000'
+  // Physical Device: 'http://192.168.1.XX:3000' (Your PC's IP)
+  final String _baseUrl = 'http://10.0.2.2:3000'; 
+
   Future<void> _analyzeMessage() async {
     final message = _messageController.text.trim();
 
-    // Validation logic based on mode
     if (_inputType == InputType.text && message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please enter a message to check'),
           backgroundColor: Colors.red[400],
-          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500)); // Simulate API
 
-    // Mock Analysis Logic
     bool isScam = false;
-    double confidence = 0.95;
+    double confidence = 0.0;
     String explanation = "";
 
-    if (_inputType == InputType.text) {
-      isScam = message.toLowerCase().contains('click') ||
-        message.toLowerCase().contains('verify') ||
-        message.toLowerCase().contains('urgent');
-      
-      confidence = isScam ? 0.87 : 0.92;
-      explanation = isScam
-        ? 'High-pressure language detected often used in phishing.'
-        : 'Message structure appears consistent with legitimate standards.';
-    } else {
-      // Mock result for Image/Audio
-      isScam = true; 
-      confidence = 0.75;
-      explanation = "The uploaded file contains metadata or patterns often associated with automated scam bots.";
+    try {
+      if (_inputType == InputType.text) {
+        // --- REAL BACKEND CONNECTION ---
+        final url = Uri.parse('$_baseUrl/detect/text');
+        
+        final response = await http.post(
+          url,
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({"textMess": message}),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          
+          if (data['success'] == true) {
+            explanation = data['result']; // The AI text from JamAI
+            
+            // Simple logic to set boolean based on AI explanation keywords
+            // You might want to ask JamAI to return a boolean JSON in the future
+            final lowerExp = explanation.toLowerCase();
+            if (lowerExp.contains('scam') || lowerExp.contains('suspicious') || lowerExp.contains('danger')) {
+              isScam = true;
+              confidence = 0.95; 
+            } else {
+              isScam = false;
+              confidence = 0.90;
+            }
+          } else {
+            explanation = "Server returned an error: ${data['error']}";
+          }
+        } else {
+          explanation = "Failed to connect to server (Status: ${response.statusCode})";
+        }
+      } else {
+        // Mock logic for Image/Audio (Not implemented in backend yet)
+        await Future.delayed(const Duration(milliseconds: 1500));
+        isScam = true; 
+        confidence = 0.75;
+        explanation = "Image/Audio analysis not yet connected to backend.";
+      }
+    } catch (e) {
+      explanation = "Connection Error: $e";
+      isScam = false;
+      confidence = 0.0;
     }
+
     setState(() => _isLoading = false);
 
     if (mounted) {
@@ -72,6 +106,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ... (Rest of your UI code: _buildTypeButton, _buildInputArea, build method remain exactly the same)
+  
   Widget _buildTypeButton(InputType type, String label, IconData icon) {
     final isSelected = _inputType == type;
     return Expanded(
@@ -118,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Helper to build the input area based on selection
   Widget _buildInputArea() {
     if (_inputType == InputType.text) {
       return Container(
@@ -154,7 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else {
-      // Upload UI for Image or Audio
       final String uploadText =
           _inputType == InputType.image ? "Upload .png / .jpg" : "Upload .mp3";
 
@@ -165,7 +199,6 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1.5),
-           // Mimic dashed border style with simple solid for now
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.05),
@@ -176,7 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: InkWell(
           onTap: () {
-            // Mock file picker logic
             ScaffoldMessenger.of(context).showSnackBar(
                const SnackBar(content: Text("File picker opening... (Mock)")),
             );
@@ -216,7 +248,6 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(top: 80, left: 24, right: 24, bottom: 50),
@@ -245,20 +276,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            // Input Area
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  
-                  // DYNAMIC INPUT AREA
                   _buildInputArea(),
-
                   const SizedBox(height: 24),
-                  
-                  // TYPE SELECTOR BUTTONS
                   Row(
                     children: [
                       _buildTypeButton(InputType.text, "Text", Icons.notes),
@@ -268,10 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _buildTypeButton(InputType.audio, "Audio", Icons.mic_outlined),
                     ],
                   ),
-
                   const SizedBox(height: 30),
-                  
-                  // ANALYZE BUTTON
                   SizedBox(
                     width: double.infinity,
                     height: 60,

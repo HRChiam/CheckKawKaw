@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start:frontend": "cd frontend && flutter pub get && flutter run",
-    "start:backend": "cd backend && node src/utils/jamAI.js",
+    "start:backend": "cd backend && node src/index.js",
     "start:all": "npm run start:frontend & npm run start:backend"
   }
 }

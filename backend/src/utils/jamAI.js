@@ -1,18 +1,11 @@
+// jamAI.js
 import JamAI from "jamaibase";
 import 'dotenv/config';
 
-
 const jamai = new JamAI({
-  token: "",
-  projectId: ""
+  token: "", // Ideally use process.env.JAMAI_TOKEN
+  projectId: "" // Ideally use process.env.JAMAI_PROJECT_ID
 });
-
-/*
-const jamai = new JamAI({
-  token: process.env.token,
-  projectId: process.env.projectId
-});*/
-
 
 export async function addTextRow(textMess) {
   try {
@@ -24,13 +17,16 @@ export async function addTextRow(textMess) {
       }]
     });
 
-    const aiResult = result.rows[0].columns['explanation'].choices[0].message.content;
-    //console.log("✅ AI Output Text from jamai:", aiResult);
-    return aiResult;
+    // Ensure the path to the response exists based on JamAI SDK response structure
+    if (result && result.rows && result.rows.length > 0) {
+        const aiResult = result.rows[0].columns['explanation'].choices[0].message.content;
+        return aiResult;
+    } 
+    return "Analysis could not be completed.";
 
   } catch (err) {
     console.error("❌ JamAI API Message:", err.message);
-    return null;
+    throw err; // Throw error so controller handles it
   }
 }
 

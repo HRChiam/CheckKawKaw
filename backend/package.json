@@ -2,24 +2,17 @@
   "name": "checkkawkaw",
   "version": "1.0.0",
   "description": "",
-  "homepage": "https://github.com/HRChiam/CheckKawKaw#readme",
-  "bugs": {
-    "url": "https://github.com/HRChiam/CheckKawKaw/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/HRChiam/CheckKawKaw.git"
-  },
-  "license": "ISC",
-  "author": "",
   "type": "module",
-  "main": "index.js",
-
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
   "dependencies": {
-    "body-parser": "^2.2.1",
+    "body-parser": "^1.20.3",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
     "jamaibase": "^0.4.0"
   }
 }
