@@ -1,11 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
-import 'main.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'homeScreen.dart';
+import 'main.dart';
 
-// PERMISSIONS SCREEN 
-class PermissionsScreen extends StatelessWidget {
+class PermissionsScreen extends StatefulWidget {
   const PermissionsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<PermissionsScreen> createState() => _PermissionsScreenState();
+}
+
+class _PermissionsScreenState extends State<PermissionsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAlreadyGranted();
+  }
+
+  Future _checkIfAlreadyGranted() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool grantedBefore = prefs.getBool("permissions_granted") ?? false;
+
+    if (grantedBefore) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +47,11 @@ class PermissionsScreen extends StatelessWidget {
                       color: AppTheme.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.shield_outlined,
-                        size: 40, color: AppTheme.primary),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      size: 40,
+                      color: AppTheme.primary,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -39,11 +65,11 @@ class PermissionsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    "To detect scams accurately, CheckKawKaw needs the following permissions to analyze messages securely.",
+                    "To detect scams accurately, CheckKawKaw needs the following permissions.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: Colors.grey,
                       height: 1.5,
                     ),
                   ),
@@ -51,98 +77,90 @@ class PermissionsScreen extends StatelessWidget {
               ),
             ),
 
-            // Permission List
+            // Permission list
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                physics: const BouncingScrollPhysics(),
                 children: const [
-                  PermissionItem(
-                    icon: Icons.sms_outlined,
-                    title: "SMS Messages",
-                    description: "Required to identify spam keywords and phishing links.",
-                  ),
                   PermissionItem(
                     icon: Icons.call_outlined,
                     title: "Phone Calls",
-                    description: "Helps identify known scam numbers in real-time.",
+                    description:
+                        "Detects incoming calls to trigger scam protection.",
                   ),
                   PermissionItem(
-                    icon: Icons.contacts_outlined,
-                    title: "Contacts",
-                    description: "Used to whitelist your known contacts.",
+                    icon: Icons.mic_none_outlined,
+                    title: "Microphone",
+                    description:
+                        "Allows scam voice analysis when recording is enabled.",
+                  ),
+                  PermissionItem(
+                    icon: Icons.notifications_outlined,
+                    title: "Notifications",
+                    description:
+                        "Shows alerts when suspicious calls are detected.",
                   ),
                 ],
               ),
             ),
 
-            // Footer / Action Button
+            // Footer button
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 20,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                      children: [
-                        const TextSpan(text: "By tapping 'Agree & Continue', you accept our "),
-                        TextSpan(
-                          text: "Terms",
-                          style: const TextStyle(
-                            color: AppTheme.dark,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()..onTap = () {},
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final statuses = await [
+                      Permission.phone,
+                      Permission.microphone,
+                      Permission.notification,
+                    ].request();
+
+                    print("📌 PHONE: ${statuses[Permission.phone]}");
+                    print("📌 MIC: ${statuses[Permission.microphone]}");
+                    print("📌 NOTIF: ${statuses[Permission.notification]}");
+
+                    // permanently denied → open settings
+                    if (statuses[Permission.phone]!.isPermanentlyDenied ||
+                        statuses[Permission.microphone]!.isPermanentlyDenied ||
+                        statuses[Permission.notification]!.isPermanentlyDenied) {
+                      openAppSettings();
+                      return;
+                    }
+
+                    bool allGranted =
+                        statuses[Permission.phone]!.isGranted &&
+                        statuses[Permission.microphone]!.isGranted &&
+                        statuses[Permission.notification]!.isGranted;
+
+                    if (allGranted) {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool("permissions_granted", true);
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text("Please allow all permissions to continue"),
                         ),
-                        const TextSpan(text: " and "),
-                        TextSpan(
-                          text: "Privacy Policy",
-                          style: const TextStyle(
-                            color: AppTheme.dark,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()..onTap = () {},
-                        ),
-                        const TextSpan(text: "."),
-                      ],
+                      );
+                    }
+                  },
+                  child: const Text(
+                    "Agree & Continue",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        );
-                      },
-                      child: const Text(
-                        "Agree & Continue",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -169,7 +187,6 @@ class PermissionItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -195,7 +212,10 @@ class PermissionItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -204,5 +224,4 @@ class PermissionItem extends StatelessWidget {
       ),
     );
   }
-} 
-
+}
