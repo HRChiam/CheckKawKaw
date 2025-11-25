@@ -73,6 +73,7 @@ class _MyAppState extends State<MyApp> {
         if (!exists) {
           print("🚨 Unknown number — showing popup");
           await NotificationService.showUnknownCaller(number);
+          print("▶️ Starting foreground service...");
           await RecordService.start();
         }
       }
