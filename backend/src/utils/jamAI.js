@@ -11,9 +11,7 @@ export async function addTextRow() {
       table_type: "action",
       table_id: "text-detect-scam",
       data: [{
-        text: `Good Night
-        World!
-        :-)`
+        text:textMess
       }]
     });
     /*
@@ -44,8 +42,9 @@ export async function addTextRow() {
 
   } catch (err) {
     console.error("❌ JamAI API Message:", err.message);
+    return null;
   }
 }
 
-console.log("📌 Running standalone JamAI test…");
-addTextRow();
+// console.log("📌 Running standalone JamAI test…");
+// addTextRow();
