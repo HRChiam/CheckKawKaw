@@ -6,6 +6,7 @@ import { addTextRow } from "../utils/jamAI.js";
  * @param {string} text - The input text to check
  * @returns {string|null} - AI result or null if error
  */
+/*
 export async function detectScam(text) {
   try {
     const result = await addTextRow(text); 
@@ -14,7 +15,7 @@ export async function detectScam(text) {
     console.error("TextController Error:", err.message);
     return null;
   }
-}
+}*/
 
 export async function analyzeText(req,res) {
     try{
