@@ -1,8 +1,8 @@
 import JamAI from "jamaibase";
 
 const jamai = new JamAI({
-  token: "", //removeeeeeeeeeeeeeeeee before commit
-  projectId: "" //removeeeeeeeeeeeeeeeee before commit
+  token: "jamai_pat_088e57c5c7582f1b0f819a3df74f3ed844e87044ffc8091d", //removeeeeeeeeeeeeeeeee before commit
+  projectId: "proj_1e9d442c28ddd05c8092b95e" //removeeeeeeeeeeeeeeeee before commit
 });
 
 export async function addTextRow(textMess) {
