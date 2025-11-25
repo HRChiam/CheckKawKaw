@@ -30,4 +30,21 @@ class NotificationService {
       notificationDetails,
     );
   }
+
+  static Future showHighRiskAlert() async {
+    const androidDetails = AndroidNotificationDetails(
+      'risk_alerts',
+      'High Risk Alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    await _plugin.show(
+      99,
+      '⚠️ Scam Risk Detected',
+      'This call may be dangerous. Stay alert.',
+      NotificationDetails(android: androidDetails),
+    );
+  }
 }

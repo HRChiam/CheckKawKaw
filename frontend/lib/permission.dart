@@ -15,20 +15,20 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   @override
   void initState() {
     super.initState();
-    _checkIfAlreadyGranted();
+    // _checkIfAlreadyGranted();
   }
 
-  Future _checkIfAlreadyGranted() async {
-    final prefs = await SharedPreferences.getInstance();
-    bool grantedBefore = prefs.getBool("permissions_granted") ?? false;
+  // Future _checkIfAlreadyGranted() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   bool grantedBefore = prefs.getBool("permissions_granted") ?? false;
 
-    if (grantedBefore) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    }
-  }
+  //   if (grantedBefore) {
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(builder: (_) => const HomeScreen()),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

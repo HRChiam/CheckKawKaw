@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'upload_service.dart';
+import 'notification_service.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -54,7 +55,12 @@ class CallRecorder {
 
     print("📤 Sending chunk → $prevPath");
 
-    await UploadService.uploadFile(prevPath);
+    final risk = await UploadService.uploadFile(prevPath);
+
+    if (risk == "high") {
+      print("🚨 HIGH RISK detected!");
+      NotificationService.showHighRiskAlert(); // ✅ trigger notification
+    }
 
     // restart next chunk
     final newPath = await _newFilePath();
@@ -83,6 +89,12 @@ class CallRecorder {
 
     print("✅ Final recording → $finalPath");
 
+    final risk = await UploadService.uploadFile(finalPath, isFinal: true);
+
+    if (risk == "high") {
+      NotificationService.showHighRiskAlert();
+    }
+    
     await UploadService.uploadFile(finalPath, isFinal: true);
   }
 
