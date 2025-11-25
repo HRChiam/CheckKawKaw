@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
+import '../services/api/text_api.dart';
+import 'dart:math' as math;
 import 'permission.dart'; // Import PermissionsScreen
 
 void main() {

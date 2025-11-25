@@ -1,9 +1,18 @@
 import JamAI from "jamaibase";
+import 'dotenv/config';
+
 
 const jamai = new JamAI({
-  token: "", //removeeeeeeeeeeeeeeeee before commit
-  projectId: "" //removeeeeeeeeeeeeeeeee before commit
+  token: "",
+  projectId: ""
 });
+
+/*
+const jamai = new JamAI({
+  token: process.env.token,
+  projectId: process.env.projectId
+});*/
+
 
 export async function addTextRow(textMess) {
   try {
@@ -11,34 +20,13 @@ export async function addTextRow(textMess) {
       table_type: "action",
       table_id: "text-detect-scam",
       data: [{
-        text:textMess
+        text: textMess
       }]
     });
-    /*
-        const reader = result.getReader();
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-            console.log("Done");
-            break;
-        }
-        console.log(value);
-        if (value) {
-            console.log("abc",value?.choices[0]?.message.content);
-        }
-    }*/
-    /*// Access the first row
-    const firstRow = result.rows[0];
-
-    // Replace 'justification-scam' with the actual column name where AI output is stored
-    const aiOutput = firstRow.columns["scam-percentage"];
-
-    console.log("✅ Final Row Output:", firstRow);
-    console.log("📝 Justification / Scam Detection:", aiOutput);*/
-    const aiOutput = result.rows[0].columns['justification-scam'].choices[0].message.content;
-    //console.log("✅ AI Output Text:", aiOutput);
-    return aiOutput;
+    const aiResult = result.rows[0].columns['explanation'].choices[0].message.content;
+    //console.log("✅ AI Output Text from jamai:", aiResult);
+    return aiResult;
 
   } catch (err) {
     console.error("❌ JamAI API Message:", err.message);
@@ -46,5 +34,12 @@ export async function addTextRow(textMess) {
   }
 }
 
-// console.log("📌 Running standalone JamAI test…");
-// addTextRow();
+
+// Test JamAI 
+//THIS IS JUST FOR TESTING PURPOSE ONLY. REMOVE LATER.
+/*
+(async () => {
+  const result = await addTextRow("This is a sample text to check for scam.");
+  console.log("Test output:", result);
+})();*/
+
