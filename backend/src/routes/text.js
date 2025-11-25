@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { analyzeText } from '../controllers/textController.js';
+
 const router = express.Router();
 
-// Placeholder controller function
-router.post('/', (req, res) => {
-    res.json({ success: true, message: 'Text scam detection endpoint working!' });
-});
+// POST /detect/text
+router.post('/', analyzeText);
 
-module.exports = router;
+export default router;
