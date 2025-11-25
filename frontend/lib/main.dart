@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
+import '../services/api/text_api.dart';
 import 'dart:math' as math;
 
 void main() {
@@ -292,20 +293,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500)); // Simulaton
 
-    // Mock logic
-    final isScam = message.toLowerCase().contains('click') ||
-        message.toLowerCase().contains('verify') ||
-        message.toLowerCase().contains('urgent') ||
-        message.toLowerCase().contains('bank');
-
-    final confidence = isScam ? 0.87 : 0.92; // Higher confidence for safe too
-    final explanation = isScam
-        ? 'We detected high-pressure language ("urgent", "verify") often used in phishing attempts to steal credentials.'
-        : 'The message structure and vocabulary appear consistent with legitimate communication standards.';
+    // Call backend API
+    final aiResult = await TextAPI.detectScam(message);
 
     setState(() => _isLoading = false);
+
+    // If API fails
+    if (aiResult == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to analyze message. Try again.'),
+            backgroundColor: Colors.red[400],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Example: your backend returns text explaining scam
+    final explanation = aiResult;
+
+    // You can decide scam or not using a simple rule or API response
+    final bool isScam = explanation.toLowerCase().contains("scam");
+    final double confidence = isScam ? 0.10 : 0.82;
 
     if (mounted) {
       Navigator.push(
@@ -321,6 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
