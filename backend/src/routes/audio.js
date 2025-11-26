@@ -6,14 +6,6 @@ import { analyzeAudio } from '../controllers/audioController.js';
 
 const router = express.Router();
 
-// Test endpoints
-router.post('/start', (req, res) => {
-    res.json({ success: true, message: 'Audio start endpoint working!' });
-});
-router.post('/end', (req, res) => {
-    res.json({ success: true, message: 'Audio end endpoint working!' });
-});
-
 // Ensure upload directory exists
 const uploadDir = path.join('storage', 'Audio');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -37,13 +29,10 @@ router.post('/chunk', upload.single('file'), async (req, res) => {
 
     try {
         const result = await analyzeAudio(req.file.path);
-        if (!result) {
-            return res.status(500).json({ error: 'Audio processing returned undefined' });
-        }
-        res.json(result);
+        return res.json({ result });
     } catch (err) {
         console.error('Error in analyzeAudio:', err);
-        res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: err.message });
     }
 });
 

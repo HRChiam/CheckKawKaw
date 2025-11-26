@@ -1,29 +1,23 @@
-//backend/src/controllers/audioController.js
-// send alert every 30s of audio sent
-import dotenv from 'dotenv';
-dotenv.config();
 import { addAudioRow } from "../utils/jamAI.js";
 import fs from 'fs';
-import axios from 'axios';
-import FormData from 'form-data';
 
 /**
- * Controller function to detect scam in text
+ * Controller function to detect scam in audio
  * @param {string} text - The input text to check
  * @returns {string|null} - AI result or null if error
  */
 
-export async function analyzeAudio(req, res) {
-  let filePath = req.file?.path;
+export async function analyzeAudio(filePath) {
   try {
-    // 1. Upload file to Jamaibase and analyze
-    const result = await addAudioRow(filePath);
-    console.log('Jam AI raw response:', response);
-    res.json({ result });
+    console.log("Analyzing:", filePath);
+
+    const aiResponse = await addAudioRow(filePath);
+    return aiResponse;
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    throw err;
+
   } finally {
-    // Automatic cleanup: delete the uploaded file
     if (filePath) {
       fs.promises.unlink(filePath).catch(() => {});
     }
