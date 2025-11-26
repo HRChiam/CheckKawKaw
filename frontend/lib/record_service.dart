@@ -4,6 +4,7 @@ import 'dart:isolate';
 
 class RecordService {
   static Future start() async {
+    print("🚀 RecordService: Requesting to start foreground service...");
     await FlutterForegroundTask.startService(
       notificationTitle: 'CheckKawKaw',
       notificationText: 'Tap YES to start recording',
@@ -16,6 +17,7 @@ class RecordService {
   }
 
   static Future stop() async {
+    print("🛑 RecordService: Stopping foreground service...");
     await FlutterForegroundTask.stopService();
   }
 }
@@ -33,6 +35,7 @@ class _RecordTaskHandler extends TaskHandler {
 
   @override
   void onButtonPressed(String id) {
+    print("🖱️ BUTTON PRESSED: $id");
     if (id == 'yes_record') {
       print("🎤 USER PRESSED YES — starting recording");
       CallRecorder.userApproved = true;
@@ -40,6 +43,7 @@ class _RecordTaskHandler extends TaskHandler {
 
     if (id == 'no_record') {
       print("🛑 USER PRESSED NO — stopping service");
+      CallRecorder.userApproved = false;
       FlutterForegroundTask.stopService();
     }
   }
