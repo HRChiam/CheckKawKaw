@@ -39,10 +39,11 @@ class _MyAppState extends State<MyApp> {
   void _initForegroundTask() {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'recording_channel',
+        channelId: 'checkkawkaw_recording_channel',
         channelName: 'Recording Service',
         channelDescription: 'Handles call recording requests',
-        priority: NotificationPriority.HIGH,
+        channelImportance: NotificationChannelImportance.MAX,
+        priority: NotificationPriority.MAX,
         playSound: false,
         visibility: NotificationVisibility.VISIBILITY_PUBLIC,
       ),
