@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 
 class TextAPI {
   static Future<String?> detectScam(String message) async {
-    final url = Uri.parse('http://10.0.2.2:3000/detect/text');
+    final url = Uri.parse('http://192.168.0.5:3000/detect/text');
+    //need to replace with your wifi ipv4
 
     try {
       final response = await http.post(

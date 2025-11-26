@@ -1,10 +1,11 @@
 // jamAI.js
+import dotenv from 'dotenv';
+dotenv.config();
 import JamAI from "jamaibase";
-import 'dotenv/config';
 
 const jamai = new JamAI({
-  token: "", // Ideally use process.env.JAMAI_TOKEN
-  projectId: "" // Ideally use process.env.JAMAI_PROJECT_ID
+  token: process.env.JAMAI_TOKEN,
+  projectId: process.env.JAMAI_PROJECT_ID 
 });
 
 export async function addTextRow(textMess) {
