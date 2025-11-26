@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-
+import 'services/ip.dart';
 class UploadService {
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: "http://localhost:3000", // Local backend
+      baseUrl: configBaseUrl, // Local backend
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 20),
     ),

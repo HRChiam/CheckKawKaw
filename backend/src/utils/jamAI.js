@@ -101,11 +101,22 @@ export async function addTextRow(textMess) {
 // Add phone chunk row with state and log id
 export async function addPhoneRow(audioPath, phoneCallState, phoneLogId) {
   try {
-    // 1. Upload file to Jamaibase v2
+    // 1. Check if file exists locally
+    if (!fs.existsSync(audioPath)) {
+      console.error(`❌ File not found locally: ${audioPath}`);
+      return { transcript: "Error: Audio file missing on server." };
+    }
+
+    // 2. Upload file to Jamaibase v2
     const ext = path.extname(audioPath).toLowerCase();
-    let mimeType = 'application/octet-stream';
-    if (ext === '.mp3') mimeType = 'audio/mpeg';
+    
+    // Explicit MIME type mapping
+    let mimeType = 'application/octet-stream'; 
     if (ext === '.wav') mimeType = 'audio/wav';
+    if (ext === '.mp3') mimeType = 'audio/mpeg';
+    if (ext === '.m4a') mimeType = 'audio/mp4';
+
+    console.log(`📤 Uploading to JamAI: ${path.basename(audioPath)} (${mimeType})`);
 
     const form = new FormData();
     form.append('file', fs.createReadStream(audioPath), {
@@ -124,29 +135,40 @@ export async function addPhoneRow(audioPath, phoneCallState, phoneLogId) {
         },
       }
     );
-    const fileId = uploadRes.data.file_id;
 
-    // 2. Pass fileId, state, and log id to JamAI as columns
+    // 🔍 DEBUG: Log the entire response to see what JamAI gives us
+    // console.log("JamAI Upload Response:", uploadRes.data);
+
+    // ✅ FIX: Use 'uri' (or file_uri/url). This is what the Table needs.
+    const fileUri = uploadRes.data.uri || uploadRes.data.file_uri || uploadRes.data.url;
+
+    if (!fileUri) {
+      console.error("❌ Upload successful but NO URI returned. Response keys:", Object.keys(uploadRes.data));
+      throw new Error("File upload returned no URI");
+    }
+
+    console.log(`🔗 File URI obtained: ${fileUri}`);
+
+    // 3. Pass the URI to the JamAI Table
     const result = await jamai.table.addRow({
       table_type: "action",
       table_id: "phone-audio-detect-scam",
       data: [{
-        audio: fileId,
+        "audio": fileUri,  // <--- IMPORTANT: Sending the Link, not just ID
         "phone-call-state": phoneCallState,
         "phone-log-id": phoneLogId
       }]
     });
 
     if (result && result.rows && result.rows.length > 0) {
-      // Return the whole row for aggregation
       return result.rows[0].columns;
     }
     return { transcript: "Analysis could not be completed." };
 
   } catch (err) {
-    console.error("❌ JamAI API Message:", err.message);
+    console.error("❌ JamAI API Error:", err.message);
     if (err.response) {
-      console.error('❌ JamAI API Response:', err.response.data);
+      console.error('❌ JamAI Response Data:', JSON.stringify(err.response.data, null, 2));
     }
     throw err;
   }

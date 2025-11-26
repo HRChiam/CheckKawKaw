@@ -57,6 +57,7 @@ class _RecordTaskHandler extends TaskHandler {
       print("🛑 USER PRESSED NO");
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('user_approved_record', false); // ✅ Reset
+      await CallRecorder.stopAndSendFinal();
       FlutterForegroundTask.stopService();
     }
   }

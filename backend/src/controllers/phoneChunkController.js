@@ -6,12 +6,6 @@ import fs from 'fs';
 import axios from 'axios';
 import FormData from 'form-data';
 
-/**
- * Controller function to detect scam in text
- * @param {string} text - The input text to check
- * @returns {string|null} - AI result or null if error
- */
-
 function getSafeText(colData) {
   if (!colData) return "";
   if (typeof colData === 'string') return colData;
@@ -19,6 +13,12 @@ function getSafeText(colData) {
   if (colData.value) return colData.value;
   return "";
 }
+
+/**
+ * Controller function to detect scam in text
+ * @param {string} text - The input text to check
+ * @returns {string|null} - AI result or null if error
+ */
 
 // In-memory store for phone call chunks (for demo; use DB for production)
 const phoneCallChunks = {};
