@@ -1,10 +1,12 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'call_recorder.dart';
-import 'dart:isolate';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async'; // Needed for Future
 
 class RecordService {
   static Future start() async {
     print("🚀 RecordService: Requesting to start foreground service...");
+    
     await FlutterForegroundTask.startService(
       notificationTitle: 'CheckKawKaw',
       notificationText: 'Tap YES to start recording',
@@ -29,32 +31,41 @@ void startCallback() {
 
 class _RecordTaskHandler extends TaskHandler {
   @override
-  void onStart(DateTime timestamp, SendPort? sendPort) {
-    print("✅ Foreground service started");
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    print("✅ Foreground service started (v9)");
   }
 
   @override
-  // void onButtonPressed(String id) {
-  //   print("🖱️ BUTTON PRESSED: $id");
-  //   if (id == 'yes_record') {
-  //     print("🎤 USER PRESSED YES — starting recording");
-  //     CallRecorder.userApproved = true;
-  //   }
+  void onNotificationButtonPressed(String id) async { // ✅ Make async
+    print("🖱️ BUTTON PRESSED: $id");
 
-  //   if (id == 'no_record') {
-  //     print("🛑 USER PRESSED NO — stopping service");
-  //     CallRecorder.userApproved = false;
-  //     FlutterForegroundTask.stopService();
-  //   }
-  // }
+    if (id == 'yes_record') {
+      print("🎤 USER PRESSED YES — Saving to Storage...");
 
-  @override
-  void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {
-    // optional — only runs if interval is set
+      // 1. Save approval to 'disk' so Main App can see it
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('user_approved_record', true); // ✅ KEY CHANGE
+
+      FlutterForegroundTask.updateService(
+        notificationTitle: 'CheckKawKaw',
+        notificationText: '🔴 Recording Call...',
+        notificationButtons: [], 
+      );
+    }
+
+    if (id == 'no_record') {
+      print("🛑 USER PRESSED NO");
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('user_approved_record', false); // ✅ Reset
+      FlutterForegroundTask.stopService();
+    }
   }
 
   @override
-  void onDestroy(DateTime timestamp, SendPort? sendPort) {
+  void onRepeatEvent(DateTime timestamp) {}
+
+  @override
+  Future<void> onDestroy(DateTime timestamp, bool isSystemClosure) async {
     print("🟡 Foreground service destroyed");
   }
 }
