@@ -6,74 +6,59 @@ import '../ip.dart';
 final String _baseUrl = configBaseUrl;
 
 class TextAPI {
-  //declare the item that needs to be returned in this function
-  String explanation;
-  bool isScam;
-  double confidence;
+  // These match the fields you were using in homeScreen.dart
+  final String riskLevel;
+  final String scamType;
+  final String explanation;
+  final String recommendation;
 
   TextAPI({
+    required this.riskLevel,
+    required this.scamType,
     required this.explanation,
-    required this.isScam,
-    required this.confidence,
+    required this.recommendation,
   });
 
-  static Future <TextAPI> detectTextScam(String message) async {
-    String explanation = "";
-    bool isScam = false;
-    double confidence = 0.0;
+  factory TextAPI.error(String errorMessage) {
+    return TextAPI(
+      riskLevel: "Unknown",
+      scamType: "Unknown",
+      explanation: errorMessage,
+      recommendation: "Please try again later.",
+    );
+  }
+
+  static Future<TextAPI> analyzeMessage(String message) async {
     try {
-      //i modify this line a bit the if (_inputType == InputType.text)
-      if (message != "") {
+      final url = Uri.parse('$_baseUrl/detect/text');
 
-        final url = Uri.parse('$_baseUrl/detect/text');
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"textMess": message}),
+      );
 
-        final response = await http.post(
-          url,
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({"textMess": message}),
-        );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
+        if (data['success'] == true && data['result'] != null) {
+          final Map<String, dynamic> aiData = Map<String, dynamic>.from(data['result']);
 
-          if (data['success'] == true) {
-            explanation = data['result']; // The AI text from JamAI
-
-            // Simple logic to set boolean based on AI explanation keywords
-            // You might want to ask JamAI to return a boolean JSON in the future
-            final lowerExp = explanation.toLowerCase();
-            if (lowerExp.contains('scam') ||
-                lowerExp.contains('suspicious') ||
-                lowerExp.contains('danger')) {
-              isScam = true;
-              confidence = 0.95;
-            } else {
-              isScam = false;
-              confidence = 0.90;
-            }
-          } else {
-            explanation = "Server returned an error: ${data['error']}";
-          }
+          // The parsing logic strictly moved from homeScreen.dart
+          return TextAPI(
+            riskLevel: (aiData['risk_level'] ?? "Unknown").replaceAll('"', ''),
+            scamType: (aiData['scam_type'] ?? "Unknown").replaceAll('"', ''),
+            explanation: (aiData['explanation'] ?? "No explanation provided.").replaceAll('"', ''),
+            recommendation: (aiData['recommendation'] ?? "Stay vigilant.").replaceAll('"', ''),
+          );
         } else {
-          explanation =
-              "Failed to connect to server (Status: ${response.statusCode})";
+          return TextAPI.error("Server error: ${data['error']}");
         }
       } else {
-        // Mock logic for Image/Audio (Not implemented in backend yet)
-        await Future.delayed(const Duration(milliseconds: 1500));
-        isScam = true;
-        confidence = 0.75;
-        explanation = "Image/Audio analysis not yet connected to backend.";
+        return TextAPI.error("Connection failed (Status: ${response.statusCode})");
       }
     } catch (e) {
-      explanation = "Connection Error: $e";
-      isScam = false;
-      confidence = 0.0;
+      return TextAPI.error("Error: $e");
     }
-    return TextAPI(
-      explanation: explanation,
-      isScam: isScam,
-      confidence: confidence,
-    );
   }
 }

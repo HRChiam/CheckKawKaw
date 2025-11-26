@@ -1,10 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
-
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-
 import textRoutes from './routes/text.js';
 import imageRoutes from './routes/Image.js';
 import audioRoutes from './routes/audio.js';
@@ -23,11 +21,18 @@ app.use('/detect/image', imageRoutes);
 app.use('/detect/audio', audioRoutes);
 app.use('/phone', phoneCallRoutes);
 
-process.on('exit', (code) => {
-    console.log(`⚠️  Process is exiting with code: ${code}`);
+app.get('/debug/jamai', async (req, res) => {
+    try {
+        const mod = await import('./utils/jamAI.js');
+        const getJamaiStatus = mod.getJamaiStatus || (() => ({ tokenPresent: false, projectIdPresent: false, initialized: false }));
+        const status = getJamaiStatus();
+        res.json({ success: true, jamai: status });
+    } catch (e) {
+        console.error('Error loading jamAI diagnostics:', e && e.message ? e.message : e);
+        res.status(500).json({ success: false, error: 'Could not retrieve JamAI status' });
+    }
 });
 
-// Start server
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, '0.0.0.0', (err) => {
     if (err) {
@@ -38,7 +43,6 @@ const server = app.listen(PORT, '0.0.0.0', (err) => {
     console.log(`   Accessible locally at http://localhost:${PORT}`);
 });
 
-// Handle server errors (like port already in use)
 server.on('error', (e) => {
     if (e.code === 'EADDRINUSE') {
         console.log('❌ Port 3000 is already in use!');
