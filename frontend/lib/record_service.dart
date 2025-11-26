@@ -34,19 +34,19 @@ class _RecordTaskHandler extends TaskHandler {
   }
 
   @override
-  void onButtonPressed(String id) {
-    print("🖱️ BUTTON PRESSED: $id");
-    if (id == 'yes_record') {
-      print("🎤 USER PRESSED YES — starting recording");
-      CallRecorder.userApproved = true;
-    }
+  // void onButtonPressed(String id) {
+  //   print("🖱️ BUTTON PRESSED: $id");
+  //   if (id == 'yes_record') {
+  //     print("🎤 USER PRESSED YES — starting recording");
+  //     CallRecorder.userApproved = true;
+  //   }
 
-    if (id == 'no_record') {
-      print("🛑 USER PRESSED NO — stopping service");
-      CallRecorder.userApproved = false;
-      FlutterForegroundTask.stopService();
-    }
-  }
+  //   if (id == 'no_record') {
+  //     print("🛑 USER PRESSED NO — stopping service");
+  //     CallRecorder.userApproved = false;
+  //     FlutterForegroundTask.stopService();
+  //   }
+  // }
 
   @override
   void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {

@@ -97,7 +97,9 @@ export async function addTextRow(textMess) {
     return mockAiData;
   }
 }
-export async function addPhoneRow(audioPath) {
+
+// Add phone chunk row with state and log id
+export async function addPhoneRow(audioPath, phoneCallState, phoneLogId) {
   try {
     // 1. Upload file to Jamaibase v2
     const ext = path.extname(audioPath).toLowerCase();
@@ -106,13 +108,6 @@ export async function addPhoneRow(audioPath) {
     if (ext === '.wav') mimeType = 'audio/wav';
 
     const form = new FormData();
-    console.log('Uploading file:', audioPath);
-    console.log('Detected extension:', ext);
-    console.log('Using MIME type:', mimeType);
-    console.log('Form append options:', {
-      filename: path.basename(audioPath),
-      contentType: mimeType,
-    });
     form.append('file', fs.createReadStream(audioPath), {
       filename: path.basename(audioPath),
       contentType: mimeType,
@@ -131,21 +126,22 @@ export async function addPhoneRow(audioPath) {
     );
     const fileId = uploadRes.data.file_id;
 
-    // 2. Pass fileId to JamAI as the audio column
+    // 2. Pass fileId, state, and log id to JamAI as columns
     const result = await jamai.table.addRow({
       table_type: "action",
       table_id: "phone-audio-detect-scam",
       data: [{
         audio: fileId,
-        "phone-call-state": "start"
+        "phone-call-state": phoneCallState,
+        "phone-log-id": phoneLogId
       }]
     });
 
     if (result && result.rows && result.rows.length > 0) {
-      const caution = result.rows[0].columns['caution-message'].choices[0].message.content;
-      return caution;
+      // Return the whole row for aggregation
+      return result.rows[0].columns;
     }
-    return "Analysis could not be completed.";
+    return { transcript: "Analysis could not be completed." };
 
   } catch (err) {
     console.error("❌ JamAI API Message:", err.message);
@@ -155,6 +151,72 @@ export async function addPhoneRow(audioPath) {
     throw err;
   }
 }
+
+// Get the max phone-log-id from JamAI table (fetch all rows and compute max in JS)
+export async function getMaxPhoneLogId() {
+  try {
+    let maxId = 0;
+    let offset = 0;
+    const limit = 100;
+    let more = true;
+    while (more) {
+      //list ALL rows in the table
+      const result = await jamai.table.listRows({
+        table_type: "action",
+        table_id: "phone-audio-detect-scam",
+        limit,
+        offset,
+      });
+      const items = result.items || [];
+      for (const item of items) {
+        let val = 0;
+        if (item['phone-log-id']) {
+          if (typeof item['phone-log-id'] === 'object') {
+            val = parseInt(item['phone-log-id'].value || item['phone-log-id'].text || item['phone-log-id'], 10);
+          } else {
+            val = parseInt(item['phone-log-id'], 10);
+          }
+        }
+        if (!isNaN(val) && val > maxId) maxId = val;
+      }
+      offset += items.length;
+      more = items.length === limit;
+    }
+    return maxId;
+  } catch (err) {
+    console.error("❌ Error getting max phone-log-id:", err.message);
+    return 0;
+  }
+}
+
+// Final analysis for all transcripts of a phone-log-id
+export async function addFinalPhoneAnalysis(fullTranscript, phoneLogId) {
+  try {
+    const result = await jamai.table.addRow({
+      table_type: "action",
+      table_id: "text-detect-scam",
+      data: [{
+        text: fullTranscript,
+      }]
+    });
+    if (result && result.rows && result.rows.length > 0) {
+      return result.rows[0].columns;
+    }
+    return { analysis: "Final analysis could not be completed." };
+  } catch (err) {
+    console.error("❌ JamAI Final Analysis Error:", err.message);
+    return { analysis: "Final analysis error." };
+  }
+}
+
+//testing only
+// (async () => {
+//   try {
+//     console.log("max phone log id: ",await getMaxPhoneLogId());
+//   } catch (e) {
+//     console.error(e);
+//   }
+// })();
 
 // export function isJamaiReady() {
 //   return !!jamai;

@@ -10,6 +10,8 @@ class CallRecorder {
 
   static bool userApproved = false;
   static bool _isRecording = false;
+  static String phone_call_state = "start";
+  static String? phone_log_id;
 
   static Future<String> _newFilePath() async {
     final dir = await getApplicationDocumentsDirectory();
@@ -38,14 +40,20 @@ class CallRecorder {
     );
 
     print("🎤 Recording started → $path");
+    phone_call_state = "start";
+    phone_log_id = null;
+
+    // Send the first chunk with state 'start' and no phone_log_id
+    await sendChunk(first: true);
 
     // ✅ every 30 seconds create chunk
     _timer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      phone_call_state = "middle";
       await sendChunk();
     });
   }
 
-  static Future sendChunk() async {
+  static Future sendChunk({bool first = false}) async {
     final prevPath = await _recorder.stop();
 
     if (prevPath == null) {
@@ -55,11 +63,21 @@ class CallRecorder {
 
     print("📤 Sending chunk → $prevPath");
 
-    final risk = await UploadService.uploadFile(prevPath);
+    // Use 'start' for first chunk, 'middle' for others
+    final state = phone_call_state;
+    final logId = phone_log_id ?? '';
+    final response = await UploadService.uploadFile(prevPath, phoneCallState: state, phoneLogId: logId);
 
-    if (risk == "high") {
+    // If backend generated a new phone_log_id, store it
+    if (response != null && response['phoneLogId'] != null) {
+      phone_log_id = response['phoneLogId'].toString();
+      print("📞 Updated phone_log_id: $phone_log_id");
+    }
+
+    // Handle risk/analysis if present
+    if (response != null && response['result'] != null && response['result']['risk'] == "high") {
       print("🚨 HIGH RISK detected!");
-      NotificationService.showHighRiskAlert(); // ✅ trigger notification
+      NotificationService.showHighRiskAlert();
     }
 
     // restart next chunk
@@ -75,11 +93,10 @@ class CallRecorder {
     );
   }
 
-
   static Future stopAndSendFinal() async {
     _timer?.cancel();
     _isRecording = false;
-    
+
     final finalPath = await _recorder.stop();
 
     if (finalPath == null) {
@@ -88,14 +105,17 @@ class CallRecorder {
     }
 
     print("✅ Final recording → $finalPath");
+    phone_call_state = "end";
 
-    final risk = await UploadService.uploadFile(finalPath, isFinal: true);
+    final response = await UploadService.uploadFile(finalPath, phoneCallState: phone_call_state, phoneLogId: phone_log_id ?? '');
 
-    if (risk == "high") {
+    if (response != null && response['finalAnalysis'] != null) {
+      print("📝 Final analysis: ${response['finalAnalysis']}");
+    }
+
+    if (response != null && response['finalAnalysis'] != null && response['finalAnalysis']['risk'] == "high") {
       NotificationService.showHighRiskAlert();
     }
-    
-    await UploadService.uploadFile(finalPath, isFinal: true);
+    phone_log_id = null;
   }
-
 }

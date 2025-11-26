@@ -1,7 +1,7 @@
 // send alert every 30s of audio sent
 import dotenv from 'dotenv';
 dotenv.config();
-import { addPhoneRow } from "../utils/jamAI.js";
+import { addPhoneRow, addFinalPhoneAnalysis, getMaxPhoneLogId } from "../utils/jamAI.js";
 import fs from 'fs';
 import axios from 'axios';
 import FormData from 'form-data';
@@ -12,12 +12,44 @@ import FormData from 'form-data';
  * @returns {string|null} - AI result or null if error
  */
 
+// In-memory store for phone call chunks (for demo; use DB for production)
+const phoneCallChunks = {};
+
 export async function analyzePhoneChunk(req, res) {
   let filePath = req.file?.path;
+  const phoneCallState = req.body['phone-call-state'] || req.body.phone_call_state || 'middle';
+  let phoneLogId = req.body['phone-log-id'] || req.body.phone_log_id;
+  let generatedNewId = false;
   try {
+    // If state is start, generate a new phone-log-id
+    if (phoneCallState === 'start' || !phoneLogId) {
+      phoneLogId = await getMaxPhoneLogId() + 1;
+      generatedNewId = true;
+    }
+
     // 1. Upload file to Jamaibase and analyze
-    const result = await addPhoneRow(filePath);
-    res.json({ result });
+    const result = await addPhoneRow(filePath, phoneCallState, phoneLogId);
+
+    // Store chunk result in memory
+    if (!phoneCallChunks[phoneLogId]) phoneCallChunks[phoneLogId] = [];
+    phoneCallChunks[phoneLogId].push({
+      state: phoneCallState,
+      result,
+    });
+
+    // If this is the end of the call, aggregate and analyze all chunks
+    if (phoneCallState === 'end') {
+      const allChunks = phoneCallChunks[phoneLogId] || [];
+      // Aggregate all transcriptions/results
+      const allTranscripts = allChunks.map(c => c.result.transcript || c.result).join(' ');
+      // Perform final analysis (implement addFinalPhoneAnalysis in jamAI.js)
+      const finalAnalysis = await addFinalPhoneAnalysis(allTranscripts, phoneLogId);
+      // Clean up memory
+      delete phoneCallChunks[phoneLogId];
+      res.json({ phoneLogId, finalAnalysis });
+    } else {
+      res.json({ phoneLogId, result, generatedNewId });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {
