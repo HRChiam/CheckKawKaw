@@ -9,6 +9,7 @@ import path from 'path';
 const JAMAI_TOKEN = process.env.JAMAI_TOKEN;
 const JAMAI_PROJECT_ID = process.env.JAMAI_PROJECT_ID;
 
+//TOKEN + PROJECT ID CHECK
 let jamai = null;
 if (!JAMAI_TOKEN) {
   console.warn('JAMAI_TOKEN is not set. JamAI calls will be skipped and a heuristic fallback will be used.');
@@ -24,6 +25,7 @@ if (!JAMAI_TOKEN) {
   }
 }
 
+//TEXT
 function getColText(columnData) {
   if (!columnData) return null;
   if (columnData.text) return columnData.text;
@@ -97,6 +99,8 @@ export async function addTextRow(textMess) {
     return mockAiData;
   }
 }
+
+//PHONECALL
 export async function addPhoneRow(audioPath) {
   try {
     // 1. Upload file to Jamaibase v2
@@ -153,6 +157,88 @@ export async function addPhoneRow(audioPath) {
       console.error('❌ JamAI API Response:', err.response.data);
     }
     throw err;
+  }
+}
+
+//IMAGE
+export async function addImageRow(imagePath) {
+  try {
+    // 1. Upload file to Jamaibase v2
+    const ext = path.extname(imagePath).toLowerCase();
+    let mimeType = 'application/octet-stream';
+    if (ext === '.png') mimeType = 'image/png';
+    if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    if (ext === '.gif') mimeType = 'image/gif';
+    if (ext === '.webp') mimeType = 'image/webp';
+
+    console.log('Uploading file:', imagePath);
+
+    const form = new FormData();
+    console.log('Uploading file:', imagePath);
+    console.log('Detected extension:', ext);
+    console.log('Using MIME type:', mimeType);
+    console.log('Form append options:', {
+      filename: path.basename(imagePath),
+      contentType: mimeType,
+    });
+    form.append('file', fs.createReadStream(imagePath), {
+      filename: path.basename(imagePath),
+      contentType: mimeType,
+    });
+
+    const uploadRes = await axios.post(
+      'https://api.jamaibase.com/api/v2/files/upload',
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Authorization: `Bearer ${process.env.JAMAI_TOKEN}`,
+          'X-PROJECT-ID': process.env.JAMAI_PROJECT_ID,
+        },
+      }
+    );
+    const fileUri = uploadRes.data.uri;  // use the URI returned by JamAI
+    console.log(uploadRes.data)
+
+    // 2. Pass fileId to JamAI as the image column
+    const result = await jamai.table.addRow({
+      table_type: "action",
+      table_id: "image-detect-scam",
+      data: [{
+        image: fileUri,
+      }]
+    });
+
+ if (!result.rows || result.rows.length === 0) {
+      console.error("❌ JamAI returned no rows.");
+      return null;
+    }
+
+    const columns = result.rows[0].columns;
+
+    // 4. Extract structured AI data
+    const aiData = {
+      scam_type: getColText(columns['type-of-scam']) || "Unknown",
+      explanation: getColText(columns['explanation']) || "No explanation provided.",
+      risk_level: getColText(columns['risk-level']) || "Unknown",
+      recommendation: getColText(columns['recommendations']) || "Stay vigilant."
+    };
+
+    return aiData;
+
+  } catch (err) {
+    console.error("❌ JamAI API Error:", err.message);
+    if (err.response) {
+      console.error('❌ JamAI API Response:', err.response.data);
+    }
+
+    // Return mock structured data if JamAI fails
+    return {
+      scam_type: "Unknown",
+      explanation: "(Mock) JamAI unavailable or returned error. Falling back to heuristic analysis.",
+      risk_level: "Medium",
+      recommendation: "Stay cautious and verify independently."
+    };
   }
 }
 

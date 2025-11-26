@@ -1,0 +1,5 @@
+curl.exe -X POST http://localhost:3000/detect/image/chunk `
+  -H "Content-Type: multipart/form-data" `
+  -F "file=@C:/Users/jjcha/Downloads/not_spam.jpg"
+
+
