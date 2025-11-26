@@ -15,9 +15,18 @@ export async function analyzeText(req,res) {
             return res.status(400).json({error:"No text provided"});
         }
 
+        console.log("Processing text:", textMess);
         const aiResult = await addTextRow(textMess);
         console.log("AI Result:", aiResult);
 
+        if (!aiResult) {
+            return res.status(502).json({ 
+                success: false, 
+                error: "AI service failed to return data." 
+            });
+        }
+
+        console.log("AI Result:", aiResult);
         return res.json({
             success: true,
             result:aiResult

@@ -18,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _messageController = TextEditingController();
   bool _isLoading = false;
   InputType _inputType = InputType.text;
+  
   Future<void> _analyzeMessage() async {
     final message = _messageController.text.trim();
 
@@ -33,15 +34,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() => _isLoading = true);
 
-    bool isScam = false;
-    double confidence = 0.0;
-    String explanation = "";
+    // Default values (Fallbacks)
+    String riskLevel = "Unknown";
+    String scamType = "Unknown";
+    String explanation = "Could not analyze message.";
+    String recommendation = "Please try again later.";
 
-    //API function called here
-    TextAPI result = await TextAPI.detectTextScam(message);
-    isScam = result.isScam;
-    confidence = result.confidence;
-    explanation = result.explanation;
+    try {
+      if (_inputType == InputType.text) {
+        TextAPI result = await TextAPI.analyzeMessage(message);
+        
+        // Map result back to local variables
+        riskLevel = result.riskLevel;
+        scamType = result.scamType;
+        explanation = result.explanation;
+        recommendation = result.recommendation;
+
+      } else {
+        // Mock logic for Image/Audio (Keep as is for now)
+        await Future.delayed(const Duration(milliseconds: 1500));
+        riskLevel = "High";
+        scamType = "Deepfake Audio";
+        explanation = "Audio analysis detected synthetic voice patterns.";
+        recommendation = "Do not trust this voice command. Verify caller identity.";
+      }
+    } catch (e) {
+      explanation = "Error: $e";
+      print("Error details: $e");
+    }
 
     setState(() => _isLoading = false);
 
@@ -50,18 +70,16 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => AnalysisScreen(
-            message: message,
-            isScam: isScam,
-            confidence: confidence,
+            riskLevel: riskLevel,
+            scamType: scamType,
             explanation: explanation,
+            recommendation: recommendation,
           ),
         ),
       );
     }
   }
-
-  // ... (Rest of your UI code: _buildTypeButton, _buildInputArea, build method remain exactly the same)
-
+  
   Widget _buildTypeButton(InputType type, String label, IconData icon) {
     final isSelected = _inputType == type;
     return Expanded(
