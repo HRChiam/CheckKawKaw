@@ -6,15 +6,18 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 
-const JAMAI_TOKEN = process.env.token;
-const JAMAI_PROJECT_ID = process.env.projectId;
+const JAMAI_TOKEN = process.env.JAMAI_TOKEN;
+const JAMAI_PROJECT_ID = process.env.JAMAI_PROJECT_ID;
 
 let jamai = null;
 if (!JAMAI_TOKEN) {
   console.warn('JAMAI_TOKEN is not set. JamAI calls will be skipped and a heuristic fallback will be used.');
 } else {
   try {
-    jamai = new JamAI({ token: JAMAI_TOKEN, projectId: JAMAI_PROJECT_ID });
+    jamai = new JamAI({ 
+      token: JAMAI_TOKEN, 
+      projectId: JAMAI_PROJECT_ID 
+    });
   } catch (e) {
     console.error('Failed to initialize JamAI client:', e && e.message ? e.message : e);
     jamai = null;
@@ -94,19 +97,6 @@ export async function addTextRow(textMess) {
     return mockAiData;
   }
 }
-
-export function isJamaiReady() {
-  return !!jamai;
-}
-
-export function getJamaiStatus() {
-  return {
-    tokenPresent: !!JAMAI_TOKEN,
-    projectIdPresent: !!JAMAI_PROJECT_ID,
-    initialized: !!jamai
-  };
-}
-
 export async function addPhoneRow(audioPath) {
   try {
     // 1. Upload file to Jamaibase v2
@@ -165,3 +155,16 @@ export async function addPhoneRow(audioPath) {
     throw err;
   }
 }
+
+// export function isJamaiReady() {
+//   return !!jamai;
+// }
+
+// export function getJamaiStatus() {
+//   return {
+//     tokenPresent: !!JAMAI_TOKEN,
+//     projectIdPresent: !!JAMAI_PROJECT_ID,
+//     initialized: !!jamai
+//   };
+// }
+
