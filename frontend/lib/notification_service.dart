@@ -65,7 +65,7 @@ class NotificationService {
       99,
       '⚠️ Scam Risk Detected',
       'This call may be dangerous. Stay alert.',
-      NotificationDetails(android: androidDetails),
+      const NotificationDetails(android: androidDetails),
     );
   }
 }

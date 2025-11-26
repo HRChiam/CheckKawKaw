@@ -5,7 +5,7 @@ import 'homeScreen.dart';
 import 'main.dart';
 
 class PermissionsScreen extends StatefulWidget {
-  const PermissionsScreen({Key? key}) : super(key: key);
+  const PermissionsScreen({super.key});
 
   @override
   State<PermissionsScreen> createState() => _PermissionsScreenState();
@@ -64,7 +64,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
+                  const Text(
                     "To detect scams accurately, CheckKawKaw needs the following permissions.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -176,11 +176,11 @@ class PermissionItem extends StatelessWidget {
   final String description;
 
   const PermissionItem({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     required this.description,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

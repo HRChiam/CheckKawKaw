@@ -29,7 +29,7 @@ class CallRecorder {
     final path = await _newFilePath();
 
     await _recorder.start(
-      RecordConfig(
+      const RecordConfig(
         encoder: AudioEncoder.aacLc,
         bitRate: 128000,
         sampleRate: 44100,
@@ -66,7 +66,7 @@ class CallRecorder {
     final newPath = await _newFilePath();
 
     await _recorder.start(
-      RecordConfig(
+      const RecordConfig(
         encoder: AudioEncoder.aacLc,
         bitRate: 128000,
         sampleRate: 44100,

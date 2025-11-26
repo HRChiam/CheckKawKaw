@@ -5,8 +5,8 @@ class UploadService {
   static final Dio _dio = Dio(
     BaseOptions(
       baseUrl: "https://your-backend-url.com", // ✅ change this!
-      connectTimeout: Duration(seconds: 10),
-      receiveTimeout: Duration(seconds: 20),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 20),
     ),
   );
 
@@ -45,5 +45,6 @@ class UploadService {
     } catch (e) {
       print("🚨 Upload failed → $e");
     }
+    return null;
   }
 }

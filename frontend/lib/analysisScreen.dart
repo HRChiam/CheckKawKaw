@@ -9,12 +9,12 @@ class AnalysisScreen extends StatelessWidget {
   final String explanation;
 
   const AnalysisScreen({
-    Key? key,
+    super.key,
     required this.message,
     required this.isScam,
     required this.confidence,
     required this.explanation,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
