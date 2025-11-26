@@ -1,11 +1,9 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+//import the url from config file
+import '../ip.dart';
 
-// REPLACE WITH YOUR IP.
-// Android Emulator: 'http://10.0.2.2:3000'
-// iOS Simulator: 'http://localhost:3000'
-// Physical Device / run via USB debugging: (Your PC's IP):3000
-final String _baseUrl = 'http://192.168.0.5:3000';
+final String _baseUrl = configBaseUrl;
 
 class TextAPI {
   //declare the item that needs to be returned in this function
