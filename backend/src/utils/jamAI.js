@@ -6,8 +6,8 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 
-const JAMAI_TOKEN = process.env.token;
-const JAMAI_PROJECT_ID = process.env.projectId;
+const JAMAI_TOKEN = process.env.JAMAI_TOKEN;
+const JAMAI_PROJECT_ID = process.env.JAMAI_PROJECT_ID;
 
 let jamai = null;
 if (!JAMAI_TOKEN) {
