@@ -6,6 +6,7 @@ import 'call_recorder.dart';
 import 'record_service.dart';
 import 'notification_service.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const callStateChannel = EventChannel('checkkawkaw/call_state');
 
@@ -28,47 +29,45 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  String _currentCallState = "IDLE";
+
   @override
   void initState() {
     super.initState();
     NotificationService.init();
     _initForegroundTask();
-    _listenNotificationActions();
     listenToCallState();
-  }
 
-  void _listenNotificationActions() {
-    NotificationService.onActionReceived = (actionId) async {
-      print("🔔 ACTION → $actionId");
-
-      if (actionId == 'START_RECORD') {
+    FlutterForegroundTask.addTaskDataCallback((data) async {
+      print("📨 DATA RECEIVED: $data");
+      if (data == "USER_APPROVED_RECORDING") {
+        print("✅ APPROVED RECEIVED IN MAIN THREAD");
         CallRecorder.userApproved = true;
-        print("🎤 User approved — will start after call connects");
-      }
 
-      if (actionId == 'STOP_RECORD') {
-        CallRecorder.userApproved = false;
-        print("❌ User declined recording");
+        if (_currentCallState == "OFFHOOK") {
+          print("⚡ Late Approval Detected — Starting Recording Immediately");
+          await CallRecorder.startRecording();
+        }
       }
-    };
+    });
   }
 
   void _initForegroundTask() {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'recording_channel',
+        channelId: 'ckk_recording_channel_v9',
         channelName: 'Recording Service',
         channelDescription: 'Handles call recording requests',
-        priority: NotificationPriority.HIGH,
-        playSound: false,
-        visibility: NotificationVisibility.VISIBILITY_PUBLIC,
+        channelImportance: NotificationChannelImportance.MAX,
+        priority: NotificationPriority.MAX,
       ),
       iosNotificationOptions: const IOSNotificationOptions(
         showNotification: true,
         playSound: false,
       ),
-      foregroundTaskOptions: const ForegroundTaskOptions(
-        interval: 5000,
+      foregroundTaskOptions: ForegroundTaskOptions(
+        // ✅ FIX 1: 'interval' is removed. Use 'eventAction' instead.
+        eventAction: ForegroundTaskEventAction.repeat(5000), 
         autoRunOnBoot: false,
         allowWakeLock: true,
         allowWifiLock: true,
@@ -82,27 +81,55 @@ class _MyAppState extends State<MyApp> {
       print("📞 CALL EVENT → $event");
 
       final state = event["state"];
-      final number = event["number"];
+
+      _currentCallState = state;
 
       if (state == "RINGING") {
-        final exists = await ContactChecker.isInContacts(number);
+        // final exists = await ContactChecker.isInContacts(number);
 
-        if (!exists) {
-          print("🚨 Unknown number — showing popup");
-          await NotificationService.showUnknownCaller(number);
+        // if (!exists) {
           print("▶️ Starting foreground service...");
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('user_approved_record', false); 
+          
           await RecordService.start();
-        }
+        // }
       }
 
 
-      if (state == "OFFHOOK" && CallRecorder.userApproved) {
-        print("✅ Call answered — start recording");
-        await CallRecorder.startRecording();
+      if (state == "OFFHOOK") {
+        print("📞 Call Answered — Checking for approval...");
+        
+        // 🔁 THE FIX: Check repeatedly for 5 seconds
+        for (int i = 0; i < 10; i++) {
+          final prefs = await SharedPreferences.getInstance();
+          // Reload is CRITICAL to get fresh data from disk
+          await prefs.reload(); 
+          
+          final isApproved = prefs.getBool('user_approved_record') ?? false;
+
+          if (isApproved) {
+            print("✅ Approval FOUND (Attempt ${i + 1}) — START RECORDING");
+            CallRecorder.userApproved = true;
+            await CallRecorder.startRecording();
+            return; // Exit the loop, we are done!
+          }
+          
+          print("⏳ Waiting for approval... (Attempt ${i + 1})");
+          await Future.delayed(const Duration(milliseconds: 500)); // Wait 0.5s
+        }
+
+        print("❌ Approval timed out. Recording NOT started.");
       }
 
       if (state == "IDLE") {
+        _currentCallState = "IDLE";
         CallRecorder.userApproved = false;
+        
+        // Reset storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('user_approved_record', false);
+
         await CallRecorder.stopAndSendFinal();
         await RecordService.stop();
       }
