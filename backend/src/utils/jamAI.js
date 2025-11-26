@@ -94,7 +94,64 @@ export async function addPhoneRow(audioPath) {
   }
 }
 
+export async function addAudioRow(audioPath) {
+  try {
+    // 1. Upload file to Jamaibase v2
+    const ext = path.extname(audioPath).toLowerCase();
+    let mimeType = 'application/octet-stream';
+    if (ext === '.mp3') mimeType = 'audio/mpeg';
+    //if (ext === '.wav') mimeType = 'audio/wav';
 
+    const form = new FormData();
+    console.log('Uploading file:', audioPath);
+    console.log('Detected extension:', ext);
+    console.log('Using MIME type:', mimeType);
+    console.log('Form append options:', {
+      filename: path.basename(audioPath),
+      contentType: mimeType,
+    });
+    form.append('file', fs.createReadStream(audioPath), {
+      filename: path.basename(audioPath),
+      contentType: mimeType,
+    });
+
+    const uploadRes = await axios.post(
+      'https://api.jamaibase.com/api/v2/files/upload',
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Authorization: `Bearer ${process.env.JAMAI_TOKEN}`,
+          'X-PROJECT-ID': process.env.JAMAI_PROJECT_ID,
+        },
+      }
+    );
+    const fileId = uploadRes.data.file_id;
+
+    // 2. Pass fileId to JamAI as the audio column
+    const result = await jamai.table.addRow({
+      table_type: "action",
+      table_id: "audio-detect-scam",
+      data: [{
+        audio: fileId,
+        "audio-state": "start"
+      }]
+    });
+
+    if (result && result.rows && result.rows.length > 0) {
+      const caution = result.rows[0].columns['explanations'].choices[0].message.content;
+      return caution;
+    }
+    return "Analysis could not be completed.";
+
+  } catch (err) {
+    console.error("❌ JamAI API Message:", err.message);
+    if (err.response) {
+      console.error('❌ JamAI API Response:', err.response.data);
+    }
+    throw err;
+  }
+}
 // Test JamAI
 //THIS IS JUST FOR TESTING PURPOSE ONLY. REMOVE LATER.
 /*
