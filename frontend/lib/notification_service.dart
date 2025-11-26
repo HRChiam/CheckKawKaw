@@ -1,5 +1,4 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'record_service.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -52,20 +51,22 @@ class NotificationService {
     );
   }
 
-  static Future showHighRiskAlert() async {
-    const androidDetails = AndroidNotificationDetails(
+  static Future showHighRiskAlert(String cautionMessage) async {
+    final androidDetails = AndroidNotificationDetails( // Removed 'const' because cautionMessage is dynamic
       'risk_alerts',
       'High Risk Alerts',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      // Pass the message here so it expands if the text is long
+      styleInformation: BigTextStyleInformation(cautionMessage), 
     );
 
     await _plugin.show(
       99,
       '⚠️ Scam Risk Detected',
-      'This call may be dangerous. Stay alert.',
-      const NotificationDetails(android: androidDetails),
+      cautionMessage, // Now this variable is defined via the parameter
+      NotificationDetails(android: androidDetails), // Removed 'const'
     );
   }
 }

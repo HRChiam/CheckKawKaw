@@ -12,6 +12,14 @@ import FormData from 'form-data';
  * @returns {string|null} - AI result or null if error
  */
 
+function getSafeText(colData) {
+  if (!colData) return "";
+  if (typeof colData === 'string') return colData;
+  if (colData.text) return colData.text;
+  if (colData.value) return colData.value;
+  return "";
+}
+
 // In-memory store for phone call chunks (for demo; use DB for production)
 const phoneCallChunks = {};
 
@@ -22,14 +30,19 @@ export async function analyzePhoneChunk(req, res) {
   let generatedNewId = false;
   try {
     // If state is start, generate a new phone-log-id
-    if (phoneCallState === 'start' || !phoneLogId) {
-      phoneLogId = await getMaxPhoneLogId() + 1;
+    if (phoneCallState === 'start' || !phoneLogId || phoneLogId === 'null' || phoneLogId === 'undefined') {
+      const maxId = await getMaxPhoneLogId();
+      phoneLogId = maxId + 1;
       generatedNewId = true;
+      console.log(`🆕 New Call Detected. Generated phone-log-id: ${phoneLogId}`);
     }
 
-    // 1. Upload file to Jamaibase and analyze
     const result = await addPhoneRow(filePath, phoneCallState, phoneLogId);
 
+    const riskRaw = getSafeText(result['risk-level']).toLowerCase();
+    const cautionMessage = getSafeText(result['recommendation']) || "Suspicious activity detected.";
+
+    const sendAlert = riskRaw.includes('high');
     // Store chunk result in memory
     if (!phoneCallChunks[phoneLogId]) phoneCallChunks[phoneLogId] = [];
     phoneCallChunks[phoneLogId].push({
@@ -51,6 +64,7 @@ export async function analyzePhoneChunk(req, res) {
       res.json({ phoneLogId, result, generatedNewId });
     }
   } catch (err) {
+    console.error("Controller Error:", err);
     res.status(500).json({ error: err.message });
   } finally {
     // Automatic cleanup: delete the uploaded file

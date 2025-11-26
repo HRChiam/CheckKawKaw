@@ -61,11 +61,12 @@ class CallRecorder {
       return;
     }
 
-    print("📤 Sending chunk → $prevPath");
-
     // Use 'start' for first chunk, 'middle' for others
     final state = phone_call_state;
     final logId = phone_log_id ?? '';
+
+    print("📤 Sending chunk ($state) | ID: $logId");
+
     final response = await UploadService.uploadFile(prevPath, phoneCallState: state, phoneLogId: logId);
 
     // If backend generated a new phone_log_id, store it
@@ -75,9 +76,11 @@ class CallRecorder {
     }
 
     // Handle risk/analysis if present
-    if (response != null && response['result'] != null && response['result']['risk'] == "high") {
-      print("🚨 HIGH RISK detected!");
-      NotificationService.showHighRiskAlert();
+    if (response != null && response['send_alert'] == true) {
+      String msg = response['caution_message'] ?? "High risk scam detected.";
+      print("🚨 ALERT TRIGGERED: $msg");
+      // Pass the specific message to the notification
+      NotificationService.showHighRiskAlert(msg);
     }
 
     // restart next chunk
@@ -109,13 +112,11 @@ class CallRecorder {
 
     final response = await UploadService.uploadFile(finalPath, phoneCallState: phone_call_state, phoneLogId: phone_log_id ?? '');
 
-    if (response != null && response['finalAnalysis'] != null) {
-      print("📝 Final analysis: ${response['finalAnalysis']}");
+    if (response != null && response['send_alert'] == true) {
+       String msg = response['caution_message'] ?? "High risk detected in final analysis.";
+       NotificationService.showHighRiskAlert(msg);
     }
-
-    if (response != null && response['finalAnalysis'] != null && response['finalAnalysis']['risk'] == "high") {
-      NotificationService.showHighRiskAlert();
-    }
+    
     phone_log_id = null;
   }
 }
