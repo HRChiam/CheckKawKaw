@@ -6,33 +6,6 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 
-const JAMAI_TOKEN = process.env.JAMAI_TOKEN;
-const JAMAI_PROJECT_ID = process.env.JAMAI_PROJECT_ID;
-
-let jamai = null;
-if (!JAMAI_TOKEN) {
-  console.warn('JAMAI_TOKEN is not set. JamAI calls will be skipped and a heuristic fallback will be used.');
-} else {
-  try {
-    jamai = new JamAI({ token: JAMAI_TOKEN, projectId: JAMAI_PROJECT_ID });
-  } catch (e) {
-    console.error('Failed to initialize JamAI client:', e && e.message ? e.message : e);
-    jamai = null;
-  }
-}
-
-function getColText(columnData) {
-  if (!columnData) return null;
-  if (columnData.text) return columnData.text;
-  if (columnData.value) return columnData.value;
-  if (columnData.choices && columnData.choices.length > 0) {
-      return columnData.choices[0].message.content;
-  }
-  if (typeof columnData === 'string') return columnData;
-
-  return null;
-}
-
 export async function addTextRow(textMess) {
   try {
     if (!jamai) {
@@ -95,18 +68,6 @@ export async function addTextRow(textMess) {
   }
 }
 
-export function isJamaiReady() {
-  return !!jamai;
-}
-
-export function getJamaiStatus() {
-  return {
-    tokenPresent: !!JAMAI_TOKEN,
-    projectIdPresent: !!JAMAI_PROJECT_ID,
-    initialized: !!jamai
-  };
-}
-
 export async function addPhoneRow(audioPath) {
   try {
     // 1. Upload file to Jamaibase v2
@@ -165,3 +126,45 @@ export async function addPhoneRow(audioPath) {
     throw err;
   }
 }
+
+const JAMAI_TOKEN = process.env.JAMAI_TOKEN;
+const JAMAI_PROJECT_ID = process.env.JAMAI_PROJECT_ID;
+
+let jamai = null;
+if (!JAMAI_TOKEN) {
+  console.warn('JAMAI_TOKEN is not set. JamAI calls will be skipped and a heuristic fallback will be used.');
+} else {
+  try {
+    jamai = new JamAI({ token: JAMAI_TOKEN, projectId: JAMAI_PROJECT_ID });
+  } catch (e) {
+    console.error('Failed to initialize JamAI client:', e && e.message ? e.message : e);
+    jamai = null;
+  }
+}
+
+function getColText(columnData) {
+  if (!columnData) return null;
+  if (columnData.text) return columnData.text;
+  if (columnData.value) return columnData.value;
+  if (columnData.choices && columnData.choices.length > 0) {
+      return columnData.choices[0].message.content;
+  }
+  if (typeof columnData === 'string') return columnData;
+
+  return null;
+}
+
+
+
+export function isJamaiReady() {
+  return !!jamai;
+}
+
+export function getJamaiStatus() {
+  return {
+    tokenPresent: !!JAMAI_TOKEN,
+    projectIdPresent: !!JAMAI_PROJECT_ID,
+    initialized: !!jamai
+  };
+}
+
