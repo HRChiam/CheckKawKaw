@@ -8,7 +8,7 @@ import '../services/api/text_api.dart';
 enum InputType { text, image, audio }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -192,11 +192,11 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.light,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.add, color: AppTheme.primary, size: 32),
+                child: const Icon(Icons.add, color: AppTheme.primary, size: 32),
               ),
               const SizedBox(height: 12),
               Text(
@@ -296,9 +296,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 24,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2))
-                          : Row(
+                          : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.radar, color: Colors.white),
                                 SizedBox(width: 10),
                                 Text("Analyze Scam",

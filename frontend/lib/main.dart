@@ -1,25 +1,117 @@
 import 'package:flutter/material.dart';
-import 'permission.dart'; // Import PermissionsScreen
+import 'package:flutter/services.dart';
+import 'permission.dart';
+import 'contacts_helper.dart';
+import 'call_recorder.dart';
+import 'record_service.dart';
+import 'notification_service.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+
+const callStateChannel = EventChannel('checkkawkaw/call_state');
 
 void main() {
   runApp(const MyApp());
 }
 
-// Global Theme Colors (Access these from any file using AppTheme.primary)
 class AppTheme {
-  static const Color primary = Color(0xFF0ABAB5); // Tiffany Blue
-  static const Color light = Color(0xFFE0F7F6);   // Light wash
-  static const Color dark = Color(0xFF007A74);    // Contrast text
-  static const Color text = Color(0xFF2D3142);    // Dark Grey text
+  static const Color primary = Color(0xFF0ABAB5);
+  static const Color light = Color(0xFFE0F7F6);
+  static const Color dark = Color(0xFF007A74);
+  static const Color text = Color(0xFF2D3142);
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.init();
+    _initForegroundTask();
+    _listenNotificationActions();
+    listenToCallState();
+  }
+
+  void _listenNotificationActions() {
+    NotificationService.onActionReceived = (actionId) async {
+      print("🔔 ACTION → $actionId");
+
+      if (actionId == 'START_RECORD') {
+        CallRecorder.userApproved = true;
+        print("🎤 User approved — will start after call connects");
+      }
+
+      if (actionId == 'STOP_RECORD') {
+        CallRecorder.userApproved = false;
+        print("❌ User declined recording");
+      }
+    };
+  }
+
+  void _initForegroundTask() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'recording_channel',
+        channelName: 'Recording Service',
+        channelDescription: 'Handles call recording requests',
+        priority: NotificationPriority.HIGH,
+        playSound: false,
+        visibility: NotificationVisibility.VISIBILITY_PUBLIC,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
+      ),
+      foregroundTaskOptions: const ForegroundTaskOptions(
+        interval: 5000,
+        autoRunOnBoot: false,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
+  }
+
+
+  void listenToCallState() {
+    callStateChannel.receiveBroadcastStream().listen((event) async {
+      print("📞 CALL EVENT → $event");
+
+      final state = event["state"];
+      final number = event["number"];
+
+      if (state == "RINGING") {
+        final exists = await ContactChecker.isInContacts(number);
+
+        if (!exists) {
+          print("🚨 Unknown number — showing popup");
+          await NotificationService.showUnknownCaller(number);
+          print("▶️ Starting foreground service...");
+          await RecordService.start();
+        }
+      }
+
+
+      if (state == "OFFHOOK" && CallRecorder.userApproved) {
+        print("✅ Call answered — start recording");
+        await CallRecorder.startRecording();
+      }
+
+      if (state == "IDLE") {
+        CallRecorder.userApproved = false;
+        await CallRecorder.stopAndSendFinal();
+        await RecordService.stop();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CheckKawKaw',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
