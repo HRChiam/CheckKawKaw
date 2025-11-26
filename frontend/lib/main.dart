@@ -33,24 +33,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     NotificationService.init();
     _initForegroundTask();
-    _listenNotificationActions();
     listenToCallState();
-  }
-
-  void _listenNotificationActions() {
-    NotificationService.onActionReceived = (actionId) async {
-      print("🔔 ACTION → $actionId");
-
-      if (actionId == 'START_RECORD') {
-        CallRecorder.userApproved = true;
-        print("🎤 User approved — will start after call connects");
-      }
-
-      if (actionId == 'STOP_RECORD') {
-        CallRecorder.userApproved = false;
-        print("❌ User declined recording");
-      }
-    };
   }
 
   void _initForegroundTask() {
@@ -88,8 +71,6 @@ class _MyAppState extends State<MyApp> {
         final exists = await ContactChecker.isInContacts(number);
 
         if (!exists) {
-          print("🚨 Unknown number — showing popup");
-          await NotificationService.showUnknownCaller(number);
           print("▶️ Starting foreground service...");
           await RecordService.start();
         }

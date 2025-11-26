@@ -36,7 +36,6 @@ class _RecordTaskHandler extends TaskHandler {
     if (id == 'yes_record') {
       print("🎤 USER PRESSED YES — starting recording");
       CallRecorder.userApproved = true;
-      CallRecorder.startRecording();
     }
 
     if (id == 'no_record') {
