@@ -89,12 +89,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                         "Detects incoming calls to trigger scam protection.",
                   ),
                   PermissionItem(
-                    icon: Icons.mic_none_outlined,
-                    title: "Microphone",
-                    description:
-                        "Allows scam voice analysis when recording is enabled.",
-                  ),
-                  PermissionItem(
                     icon: Icons.notifications_outlined,
                     title: "Notifications",
                     description:
@@ -119,12 +113,10 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                     ].request();
 
                     print("📌 PHONE: ${statuses[Permission.phone]}");
-                    print("📌 MIC: ${statuses[Permission.microphone]}");
                     print("📌 NOTIF: ${statuses[Permission.notification]}");
 
                     // permanently denied → open settings
                     if (statuses[Permission.phone]!.isPermanentlyDenied ||
-                        statuses[Permission.microphone]!.isPermanentlyDenied ||
                         statuses[Permission.notification]!.isPermanentlyDenied) {
                       openAppSettings();
                       return;
