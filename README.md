@@ -1,6 +1,6 @@
 # 🔗 Link
 1. Demo Video:
-2. Presentation Slides:
+2. Presentation Slides: https://www.canva.com/design/DAG53_CU_tA/B5CarS2VJHvQvf3xSCDM9A/edit?utm_content=DAG53_CU_tA&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
 # 📱 CheckKawKaw – Scam Detection App  
 Full-stack mobile app with AI-powered scam detection for text, images, audio, and phone calls.
