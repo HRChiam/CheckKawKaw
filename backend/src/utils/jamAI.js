@@ -249,6 +249,8 @@ export async function addAudioRow(audioPath) {
     if (ext === '.mp3') mimeType = 'audio/mpeg';
     if (ext === '.wav') mimeType = 'audio/wav';
 
+    console.log('Uploading file:', audioPath);
+
     const form = new FormData();
     form.append('file', fs.createReadStream(audioPath), {
       filename: path.basename(audioPath),
@@ -268,33 +270,50 @@ export async function addAudioRow(audioPath) {
       }
     );
 
-    const fileId = uploadRes.data.file_id;
+    console.log(uploadRes.data);
+    const fileUri = uploadRes.data.uri || uploadRes.data.file_path || uploadRes.data.file_uri || uploadRes.data.file_id;
 
+    if (!fileUri) {
+        throw new Error(`Could not find URI in upload response. Keys available: ${Object.keys(uploadRes.data)}`);
+    }
+    
     // Insert into table
     const result = await jamai.table.addRow({
       table_type: "action",
       table_id: "audio-detect-scam",
       data: [{
-        audio: fileId,
+        audio: fileUri,
         "audio-state": "start"
       }]
     });
 
-    // Extract AI response
-    const aiText =
-      result.rows?.[0]?.columns?.['explanation']?.choices?.[0]?.message?.content ??
-      "No explanation found.";
+    if (!result.rows || result.rows.length === 0) {
+      throw new Error("JamAI returned no rows for audio analysis.");
+    }
 
-    return aiText;
+    const columns = result.rows[0].columns;
+
+    // Extract AI response
+    const aiData = {
+      scam_type: getColText(columns['type-of-scam']) || "Unknown",
+      explanation: getColText(columns['explanation']) || "No explanation provided.",
+      risk_level: getColText(columns['risk-level']) || "Unknown",
+      recommendation: getColText(columns['recommendations']) || "Stay vigilant."
+    };
+
+    return aiData;
 
   } catch (err) {
     console.error("❌ JamAI Audio Error:", err.message);
-
     if (err.response) {
       console.error("❌ API Response:", err.response.data);
     }
-
-    throw err;
+    return {
+       scam_type: "Error",
+       explanation: "Analysis failed: " + err.message,
+       risk_level: "Unknown",
+       recommendation: "Please try again later."
+    };
   }
 }
 
