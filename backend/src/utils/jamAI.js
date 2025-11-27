@@ -197,10 +197,14 @@ export async function addImageRow(imagePath) {
         },
       }
     );
-    const fileUri = uploadRes.data.uri;  // use the URI returned by JamAI
+ //   const fileUri = uploadRes.data.uri;  // use the URI returned by JamAI
     console.log(uploadRes.data)
+    const fileUri = uploadRes.data.uri || uploadRes.data.file_path || uploadRes.data.file_uri || uploadRes.data.file_id;
 
-    // 2. Pass fileId to JamAI as the image column
+    if (!fileUri) {
+        throw new Error(`Could not find URI in upload response. Keys available: ${Object.keys(uploadRes.data)}`);
+    }
+
     const result = await jamai.table.addRow({
       table_type: "action",
       table_id: "image-detect-scam",

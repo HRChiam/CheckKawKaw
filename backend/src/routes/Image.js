@@ -12,9 +12,8 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 
 const storage = multer.diskStorage({
-  destination: 'storage/image/',
+  destination: uploadDir,
   filename: (req, file, cb) => {
-    // Keep original extension
     const ext = path.extname(file.originalname);
     const basename = path.basename(file.originalname, ext);
     cb(null, `${basename}-${Date.now()}${ext}`);
@@ -23,11 +22,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage }); // or use memoryStorage for buffer
 
-router.post('/chunk', upload.single('file'), (req, res, next) => {
-    console.log("Reached /chunk route!", req.file);
-    next();
-}, analyzeImage);
+router.post('/chunk', upload.single('file'), async (req, res, next) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
 
-
+    try {
+        const result = await analyzeImage(req.file.path);
+        return res.json({ result });
+    } catch (err) {
+        console.error('Error in analyzeImage:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
 
 export default router;

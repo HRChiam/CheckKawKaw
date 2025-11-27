@@ -3,8 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { addImageRow } from "../utils/jamAI.js";
 import fs from 'fs';
-//import axios from 'axios';
-//import FormData from 'form-data';
+
 
 /**
  * Controller function to detect scam in images
@@ -12,7 +11,7 @@ import fs from 'fs';
  * @returns {string|null} - AI result or null if error
  */
 
-export async function analyzeImage(req, res) {
+/*export async function analyzeImage(req, res) {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     console.log("analyzeImage called with file:", req.file.originalname);
@@ -25,6 +24,17 @@ export async function analyzeImage(req, res) {
 
   } catch (err) {
     res.status(500).json({ error: err.message });
+*/
+
+export async function analyzeImage(filePath) {
+  try {
+    console.log("Analyzing:", filePath);
+
+    const aiResponse = await addImageRow(filePath);
+    return aiResponse;
+
+  } catch (err) {
+    throw err;
 
   } finally {
     if (filePath) {
