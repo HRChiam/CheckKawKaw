@@ -126,7 +126,6 @@ To enable call detection:
   - READ_PHONE_NUMBERS
   - READ_CALL_LOG
   - POST_NOTIFICATIONS
-  - FOREGROUND_SERVICE
 
 ---
 
