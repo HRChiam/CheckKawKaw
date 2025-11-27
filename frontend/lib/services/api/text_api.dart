@@ -1,6 +1,5 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-//import the url from config file
 import '../ip.dart';
 
 final String _baseUrl = configBaseUrl;
