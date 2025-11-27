@@ -9,6 +9,7 @@ import path from 'path';
 const JAMAI_TOKEN = process.env.JAMAI_TOKEN;
 const JAMAI_PROJECT_ID = process.env.JAMAI_PROJECT_ID;
 
+//TOKEN + PROJECT ID CHECK
 let jamai = null;
 if (!JAMAI_TOKEN) {
   console.warn('JAMAI_TOKEN is not set. JamAI calls will be skipped and a heuristic fallback will be used.');
@@ -24,6 +25,7 @@ if (!JAMAI_TOKEN) {
   }
 }
 
+//TEXT
 function getColText(columnData) {
   if (!columnData) return null;
   if (columnData.text) return columnData.text;
@@ -97,6 +99,8 @@ export async function addTextRow(textMess) {
     return mockAiData;
   }
 }
+
+//PHONECALL
 export async function addPhoneRow(audioPath) {
   try {
     // 1. Upload file to Jamaibase v2
@@ -156,15 +160,172 @@ export async function addPhoneRow(audioPath) {
   }
 }
 
-// export function isJamaiReady() {
-//   return !!jamai;
-// }
+//IMAGE
+export async function addImageRow(imagePath) {
+  try {
+    // 1. Upload file to Jamaibase v2
+    const ext = path.extname(imagePath).toLowerCase();
+    let mimeType = 'application/octet-stream';
+    if (ext === '.png') mimeType = 'image/png';
+    if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    if (ext === '.gif') mimeType = 'image/gif';
+    if (ext === '.webp') mimeType = 'image/webp';
 
-// export function getJamaiStatus() {
-//   return {
-//     tokenPresent: !!JAMAI_TOKEN,
-//     projectIdPresent: !!JAMAI_PROJECT_ID,
-//     initialized: !!jamai
-//   };
-// }
+    console.log('Uploading file:', imagePath);
+
+    const form = new FormData();
+    console.log('Uploading file:', imagePath);
+    console.log('Detected extension:', ext);
+    console.log('Using MIME type:', mimeType);
+    console.log('Form append options:', {
+      filename: path.basename(imagePath),
+      contentType: mimeType,
+    });
+    form.append('file', fs.createReadStream(imagePath), {
+      filename: path.basename(imagePath),
+      contentType: mimeType,
+    });
+
+    const uploadRes = await axios.post(
+      'https://api.jamaibase.com/api/v2/files/upload',
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Authorization: `Bearer ${process.env.JAMAI_TOKEN}`,
+          'X-PROJECT-ID': process.env.JAMAI_PROJECT_ID,
+        },
+      }
+    );
+ //   const fileUri = uploadRes.data.uri;  // use the URI returned by JamAI
+    console.log(uploadRes.data)
+    const fileUri = uploadRes.data.uri || uploadRes.data.file_path || uploadRes.data.file_uri || uploadRes.data.file_id;
+
+    if (!fileUri) {
+        throw new Error(`Could not find URI in upload response. Keys available: ${Object.keys(uploadRes.data)}`);
+    }
+
+    const result = await jamai.table.addRow({
+      table_type: "action",
+      table_id: "image-detect-scam",
+      data: [{
+        image: fileUri,
+      }]
+    });
+
+ if (!result.rows || result.rows.length === 0) {
+      console.error("❌ JamAI returned no rows.");
+      return null;
+    }
+
+    const columns = result.rows[0].columns;
+
+    // 4. Extract structured AI data
+    const aiData = {
+      scam_type: getColText(columns['type-of-scam']) || "Unknown",
+      explanation: getColText(columns['explanation']) || "No explanation provided.",
+      risk_level: getColText(columns['risk-level']) || "Unknown",
+      recommendation: getColText(columns['recommendations']) || "Stay vigilant."
+    };
+
+    return aiData;
+
+  } catch (err) {
+    console.error("❌ JamAI API Error:", err.message);
+    if (err.response) {
+      console.error('❌ JamAI API Response:', err.response.data);
+    }
+
+    // Return mock structured data if JamAI fails
+    return {
+      scam_type: "Unknown",
+      explanation: "(Mock) JamAI unavailable or returned error. Falling back to heuristic analysis.",
+      risk_level: "Medium",
+      recommendation: "Stay cautious and verify independently."
+    };
+  }
+}
+
+export async function addAudioRow(audioPath) {
+  try {
+    const ext = path.extname(audioPath).toLowerCase();
+    let mimeType = 'application/octet-stream';
+    if (ext === '.mp3') mimeType = 'audio/mpeg';
+    if (ext === '.wav') mimeType = 'audio/wav';
+
+    console.log('Uploading file:', audioPath);
+
+    const form = new FormData();
+    form.append('file', fs.createReadStream(audioPath), {
+      filename: path.basename(audioPath),
+      contentType: mimeType,
+    });
+
+    // Upload to JamAI V2
+    const uploadRes = await axios.post(
+      'https://api.jamaibase.com/api/v2/files/upload',
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Authorization: `Bearer ${process.env.JAMAI_TOKEN}`,
+          'X-PROJECT-ID': process.env.JAMAI_PROJECT_ID,
+        }
+      }
+    );
+
+    console.log(uploadRes.data);
+    const fileUri = uploadRes.data.uri || uploadRes.data.file_path || uploadRes.data.file_uri || uploadRes.data.file_id;
+
+    if (!fileUri) {
+        throw new Error(`Could not find URI in upload response. Keys available: ${Object.keys(uploadRes.data)}`);
+    }
+    
+    // Insert into table
+    const result = await jamai.table.addRow({
+      table_type: "action",
+      table_id: "audio-detect-scam",
+      data: [{
+        audio: fileUri,
+        "audio-state": "start"
+      }]
+    });
+
+    if (!result.rows || result.rows.length === 0) {
+      throw new Error("JamAI returned no rows for audio analysis.");
+    }
+
+    const columns = result.rows[0].columns;
+
+    // Extract AI response
+    const aiData = {
+      scam_type: getColText(columns['type-of-scam']) || "Unknown",
+      explanation: getColText(columns['explanation']) || "No explanation provided.",
+      risk_level: getColText(columns['risk-level']) || "Unknown",
+      recommendation: getColText(columns['recommendations']) || "Stay vigilant."
+    };
+
+    return aiData;
+
+  } catch (err) {
+    console.error("❌ JamAI Audio Error:", err.message);
+    if (err.response) {
+      console.error("❌ API Response:", err.response.data);
+    }
+    return {
+       scam_type: "Error",
+       explanation: "Analysis failed: " + err.message,
+       risk_level: "Unknown",
+       recommendation: "Please try again later."
+    };
+  }
+}
+
+// Test JamAI
+//THIS IS JUST FOR TESTING PURPOSE ONLY. REMOVE LATER.
+/*
+(async () => {
+  const result = await addTextRow("This is a sample text to check for scam.");
+  console.log("Test output:", result);
+})();*/
 

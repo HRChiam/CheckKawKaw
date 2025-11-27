@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'dart:convert'; // Import for JSON
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http; // Import HTTP package
 import 'main.dart';
 import 'analysisScreen.dart';
 import '../services/api/text_api.dart';
+import '../services/api/audio_api.dart';
+import '../services/api/image_api.dart';
 
 enum InputType { text, image, audio }
 
@@ -16,16 +20,76 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _messageController = TextEditingController();
+  File? _selectedAudioFile;
+  File? _selectedImageFile;
   bool _isLoading = false;
   InputType _inputType = InputType.text;
   
-  Future<void> _analyzeMessage() async {
+  Future<void> _pickAudioFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.any, 
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedAudioFile = File(result.files.single.path!);
+        _messageController.text = result.files.single.name; 
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Selected: ${result.files.single.name}")),
+      );
+    } else {
+      // User canceled the picker
+      print("User canceled audio picking");
+    }
+  }
+
+  Future<void> _pickImageFile() async {
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.any,
+ //   allowedExtensions: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
+  );
+
+  if (result != null) {
+    setState(() {
+      _selectedImageFile = File(result.files.single.path!);
+      _messageController.text = result.files.single.name;
+    });
+    print("Picked image path: ${result.files.single.path}");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Selected: ${result.files.single.name}")),
+    );
+  } else {
+    print("User canceled image picking");
+  }
+}
+
+
+  Future<void> _analyzeInput() async {
     final message = _messageController.text.trim();
 
     if (_inputType == InputType.text && message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please enter a message to check'),
+          backgroundColor: Colors.red[400],
+        ),
+      );
+      return;
+    }
+    if (_inputType == InputType.audio && _selectedAudioFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please upload an audio file to check'),
+          backgroundColor: Colors.red[400],
+        ),
+      );
+      return;
+    }
+    if (_inputType == InputType.image && _selectedImageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please upload an image file to check'),
           backgroundColor: Colors.red[400],
         ),
       );
@@ -50,13 +114,19 @@ class _HomeScreenState extends State<HomeScreen> {
         explanation = result.explanation;
         recommendation = result.recommendation;
 
-      } else {
-        // Mock logic for Image/Audio (Keep as is for now)
-        await Future.delayed(const Duration(milliseconds: 1500));
-        riskLevel = "High";
-        scamType = "Deepfake Audio";
-        explanation = "Audio analysis detected synthetic voice patterns.";
-        recommendation = "Do not trust this voice command. Verify caller identity.";
+      } else if (_inputType == InputType.audio) {
+        AudioAPI result = await AudioAPI.analyzeAudio(_selectedAudioFile!);
+        riskLevel = result.riskLevel;
+        scamType = result.scamType;
+        explanation = result.explanation;
+        recommendation = result.recommendation;
+
+      }else if (_inputType == InputType.image) {
+        ImageAPI result = await ImageAPI.analyzeImage(_selectedImageFile!);
+        riskLevel = result.riskLevel;
+        scamType = result.scamType;
+        explanation = result.explanation;
+        recommendation = result.recommendation;
       }
     } catch (e) {
       explanation = "Error: $e";
@@ -98,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.3),
+                      color: AppTheme.primary.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     )
@@ -134,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.08),
+              color: Colors.grey.withValues(alpha: 0.08),
               blurRadius: 15,
               offset: const Offset(0, 5),
             )
@@ -160,9 +230,120 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+    } else if (_inputType == InputType.audio && _selectedAudioFile != null) {
+      return Container(
+        height: 160,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+          color: AppTheme.primary, 
+          width: 2,
+        ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            )
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Center Content: Icon + Filename
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.audiotrack, size: 40, color: AppTheme.primary),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      _selectedAudioFile!.path.split('/').last, // Show Filename
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Top Right: Remove (X) Button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedAudioFile = null;
+                    _messageController.clear(); // Clear the text controller too
+                  });
+                },
+                icon: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     } else {
-      final String uploadText =
+      
+      String uploadText;
+      IconData uploadIcon = Icons.add;
+      Color iconColor = AppTheme.primary;
+      Color boxColor = Colors.white;
+
+  if (_inputType == InputType.audio) {
+    if (_selectedAudioFile != null) {
+      uploadText = _selectedAudioFile!.path.split('/').last;
+      uploadIcon = Icons.audiotrack;
+      iconColor = Colors.white;
+      boxColor = AppTheme.primary;
+    } else {
+      uploadText = "Upload .mp3";
+    }
+  } else if (_inputType == InputType.image) {
+    if (_selectedImageFile != null) {
+      uploadText = _selectedImageFile!.path.split('/').last;
+      uploadIcon = Icons.image; // or Icons.image_outlined
+      iconColor = Colors.white;
+      boxColor = AppTheme.primary;
+    } else {
+      uploadText = "Upload .png / .jpg";
+    }
+  } else {
+    uploadText = "Upload file";
+  }
+      
+      /*
+      String uploadText =
           _inputType == InputType.image ? "Upload .png / .jpg" : "Upload .mp3";
+
+      IconData uploadIcon = Icons.add;
+      Color iconColor = AppTheme.primary;
+      Color boxColor = Colors.white;
+
+      // 2. If a file is ALREADY selected (for Audio), change the UI to show it
+      if (_inputType == InputType.audio && _selectedAudioFile != null) {
+        uploadText = _selectedAudioFile!.path.split('/').last; // Show Filename
+        uploadIcon = Icons.audiotrack; // Change Icon
+        iconColor = Colors.white;
+        boxColor = AppTheme.primary; // Make box solid color
+      }*/
 
       return Container(
         height: 160,
@@ -171,10 +352,10 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border:
-              Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1.5),
+              Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
+              color: Colors.grey.withValues(alpha: 0.05),
               blurRadius: 15,
               offset: const Offset(0, 5),
             )
@@ -182,9 +363,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: InkWell(
           onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("File picker opening... (Mock)")),
-            );
+            if ( _inputType == InputType.audio) {
+              _pickAudioFile();
+            } else if ( _inputType == InputType.image) {
+              _pickImageFile();
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("File picker opening... (Mock)")),
+              );
+            }
           },
           borderRadius: BorderRadius.circular(20),
           child: Column(
@@ -243,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle),
                     child: const Icon(Icons.shield_outlined,
                         size: 48, color: Colors.white),
@@ -285,7 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: double.infinity,
                     height: 60,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _analyzeMessage,
+                      onPressed: _isLoading ? null : _analyzeInput,
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16)),

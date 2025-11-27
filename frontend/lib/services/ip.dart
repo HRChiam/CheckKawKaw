@@ -6,5 +6,5 @@
   // note that everytime you reconnect the wifi, the IP might change
 
 String port = '3000';
-String ip = 'http://192.168.0.5';
-String configBaseUrl = '$ip:$port';
+String ip = 'http://10.0.2.2';
+String configBaseUrl = ip + ':' + port;
