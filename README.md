@@ -38,8 +38,8 @@ cd backend
 npm install
 ```
 ### 2. Create Jam AI Base Project
-Download CheckKawKaw.parquet
-Import Project on Jam AI Base
+- Download CheckKawKaw.parquet
+- Import Project on Jam AI Base
 
 ### 3. Create `.env` file
 Inside `backend/.env`:
