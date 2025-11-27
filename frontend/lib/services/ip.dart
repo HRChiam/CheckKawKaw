@@ -7,4 +7,4 @@
 
 String port = '3000';
 String ip = 'http://10.0.2.2';
-String configBaseUrl = ip + ':' + port;
+String configBaseUrl = '$ip:$port';

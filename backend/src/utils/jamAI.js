@@ -38,17 +38,12 @@ function getColText(columnData) {
   return null;
 }
 
+// 1. Analyze Text (Step 3 of Pipeline)
 export async function addTextRow(textMess) {
   try {
     if (!jamai) {
-      console.warn('⚠️  Skipping JamAI call because client is not initialized. Returning mock heuristic result.');
-      const mockAiData = {
-        scam_type: "Unknown",
-        explanation: "(Mock) JamAI unavailable or missing credentials. Falling back to heuristic analysis.",
-        risk_level: "Medium",
-        recommendation: "Do not click links or share credentials. Verify sender independently."
-      };
-      return mockAiData;
+      console.warn('⚠️ JamAI not initialized.');
+      return { risk_level: "Medium", recommendation: "Service unavailable." };
     }
     const result = await jamai.table.addRow({
       table_type: "action",
@@ -66,17 +61,59 @@ export async function addTextRow(textMess) {
 
     const columns = result.rows[0].columns;
 
-    // Extract the 4 specific columns from your CSV
-    const aiData = {
+    return {
       scam_type: getColText(columns['type-of-scam']) || "Unknown",
       explanation: getColText(columns['explanation']) || "No explanation provided.",
       risk_level: getColText(columns['risk-level']) || "Unknown",
       recommendation: getColText(columns['recommendations']) || "Stay vigilant."
     };
 
-    return aiData;
-
   } catch (err) {
+    console.error("❌ JamAI Text API Error:", err.message);
+    return { risk_level: "Unknown", recommendation: "Analysis failed." };
+  }
+}
+
+export async function resetTable() {
+  try {
+    console.log("🧹 Cleaning up JamAI table for new call...");
+    let offset = 0;
+    const limit = 100;
+    let more = true;
+    
+    // 1. Fetch all Row IDs
+    const allRowIds = [];
+    while (more) {
+      const result = await jamai.table.listRows({
+        table_type: "action",
+        table_id: "phone-audio-detect-scam",
+        limit,
+        offset,
+      });
+      
+      if (result.items && result.items.length > 0) {
+        result.items.forEach(row => allRowIds.push(row.ID));
+      }
+      
+      offset += result.items.length;
+      more = (result.items.length === limit);
+    }
+
+    if (allRowIds.length === 0) {
+      console.log("✨ Table is already empty.");
+      return;
+    }
+
+    // 2. Delete them
+    console.log(`🗑️ Deleting ${allRowIds.length} old rows...`);
+    for (const rowId of allRowIds) {
+        await jamai.table.deleteRow(
+            "action",
+            "phone-audio-detect-scam",
+            rowId
+        );
+    }
+    console.log("✨ Table memory cleared!");
     console.error("❌ JamAI API Error:", err && err.message ? err.message : err);
     // If the API returned a response body, log it for debugging
     if (err && err.response) {

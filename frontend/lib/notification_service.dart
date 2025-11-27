@@ -1,5 +1,4 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'record_service.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -20,6 +19,18 @@ class NotificationService {
         }
       },
     );
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'risk_alerts', // id
+      'High Risk Alerts', // title
+      description: 'Notifications for detected scams',
+      importance: Importance.max, // Max importance for heads-up display
+      playSound: true,
+    );
+
+    await _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
   static Future showUnknownCaller(String number) async {
@@ -30,16 +41,6 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       ongoing: true,
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          'START_RECORD',
-          'Yes, record',
-        ),
-        AndroidNotificationAction(
-          'STOP_RECORD',
-          'No',
-        ),
-      ],
     );
 
     const notificationDetails = NotificationDetails(android: androidDetails);
@@ -52,20 +53,38 @@ class NotificationService {
     );
   }
 
-  static Future showHighRiskAlert() async {
+  static Future showCautionReminder() async {
     const androidDetails = AndroidNotificationDetails(
-      'risk_alerts',
-      'High Risk Alerts',
+      'caution_alert',
+      'Safety Reminders',
+      channelDescription: 'Reminders to stay safe during unknown calls',
       importance: Importance.max,
       priority: Priority.high,
-      playSound: true,
     );
 
     await _plugin.show(
-      99,
-      '⚠️ Scam Risk Detected',
-      'This call may be dangerous. Stay alert.',
+      2,
+      '⚠️ Stay Alert',
+      'Unknown caller detected. Be careful of scams (OTP, bank requests, urgent threats).',
       const NotificationDetails(android: androidDetails),
     );
   }
+
+  static Future showPostCallCheck() async {
+    const androidDetails = AndroidNotificationDetails(
+      'post_call',
+      'Post Call Safety Check',
+      channelDescription: 'Safety check after the call ends',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    await _plugin.show(
+      3,
+      '📞 Call Ended – Safety Check',
+      'Did the caller ask for your bank account, TAC/OTP, or personal info? Review now in CheckKawKaw.',
+      const NotificationDetails(android: androidDetails),
+    );
+  }
+
 }
