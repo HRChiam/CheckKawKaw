@@ -6,7 +6,6 @@ import cors from 'cors';
 import textRoutes from './routes/text.js';
 import imageRoutes from './routes/Image.js';
 import audioRoutes from './routes/audio.js';
-import phoneCallRoutes from './routes/phoneCall.js';
 
 const app = express();
 
@@ -19,7 +18,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/detect/text', textRoutes);
 app.use('/detect/image', imageRoutes);
 app.use('/detect/audio', audioRoutes);
-app.use('/phone', phoneCallRoutes);
 
 app.get('/debug/jamai', async (req, res) => {
     try {
