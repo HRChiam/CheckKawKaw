@@ -80,6 +80,11 @@ export async function resetTable() {
     let offset = 0;
     const limit = 100;
     let more = true;
+
+    if (!jamai) {
+      console.warn("⚠️ JamAI not initialized.");
+      return;
+    }
     
     // 1. Fetch all Row IDs
     const allRowIds = [];
@@ -90,13 +95,13 @@ export async function resetTable() {
         limit,
         offset,
       });
-      
+
       if (result.items && result.items.length > 0) {
         result.items.forEach(row => allRowIds.push(row.ID));
       }
-      
-      offset += result.items.length;
-      more = (result.items.length === limit);
+
+      offset += (result.items?.length || 0);
+      more = result.items && result.items.length === limit;
     }
 
     if (allRowIds.length === 0) {
@@ -104,96 +109,34 @@ export async function resetTable() {
       return;
     }
 
-    // 2. Delete them
+    // 2. Delete rows
     console.log(`🗑️ Deleting ${allRowIds.length} old rows...`);
     for (const rowId of allRowIds) {
-        await jamai.table.deleteRow(
-            "action",
-            "phone-audio-detect-scam",
-            rowId
-        );
+      await jamai.table.deleteRow(
+        "action",
+        "phone-audio-detect-scam",
+        rowId
+      );
     }
+
     console.log("✨ Table memory cleared!");
-    console.error("❌ JamAI API Error:", err && err.message ? err.message : err);
-    // If the API returned a response body, log it for debugging
-    if (err && err.response) {
-      try {
-        console.error('   JamAI response status:', err.response.status);
-        console.error('   JamAI response data:', JSON.stringify(err.response.data, null, 2));
-      } catch (e) {
-        console.error('   Could not serialize err.response');
-      }
-    }
-
-    // Return a mock structured aiData so callers get a consistent object
-    const mockAiData = {
-      scam_type: "Unknown",
-      explanation: "(Mock) JamAI unavailable or returned error 422. Falling back to heuristic analysis.",
-      risk_level: "Medium",
-      recommendation: "Do not click links or share credentials. Verify sender independently."
-    };
-
-    return mockAiData;
-  }
-}
-
-//PHONECALL
-export async function addPhoneRow(audioPath) {
-  try {
-    // 1. Upload file to Jamaibase v2
-    const ext = path.extname(audioPath).toLowerCase();
-    let mimeType = 'application/octet-stream';
-    if (ext === '.mp3') mimeType = 'audio/mpeg';
-    if (ext === '.wav') mimeType = 'audio/wav';
-
-    const form = new FormData();
-    console.log('Uploading file:', audioPath);
-    console.log('Detected extension:', ext);
-    console.log('Using MIME type:', mimeType);
-    console.log('Form append options:', {
-      filename: path.basename(audioPath),
-      contentType: mimeType,
-    });
-    form.append('file', fs.createReadStream(audioPath), {
-      filename: path.basename(audioPath),
-      contentType: mimeType,
-    });
-
-    const uploadRes = await axios.post(
-      'https://api.jamaibase.com/api/v2/files/upload',
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          Authorization: `Bearer ${process.env.JAMAI_TOKEN}`,
-          'X-PROJECT-ID': process.env.JAMAI_PROJECT_ID,
-        },
-      }
-    );
-    const fileId = uploadRes.data.file_id;
-
-    // 2. Pass fileId to JamAI as the audio column
-    const result = await jamai.table.addRow({
-      table_type: "action",
-      table_id: "phone-audio-detect-scam",
-      data: [{
-        audio: fileId,
-        "phone-call-state": "start"
-      }]
-    });
-
-    if (result && result.rows && result.rows.length > 0) {
-      const caution = result.rows[0].columns['caution-message'].choices[0].message.content;
-      return caution;
-    }
-    return "Analysis could not be completed.";
 
   } catch (err) {
-    console.error("❌ JamAI API Message:", err.message);
-    if (err.response) {
-      console.error('❌ JamAI API Response:', err.response.data);
+    console.error("❌ JamAI API Error:", err?.message || err);
+
+    // Additional debugging info
+    if (err?.response) {
+      console.error("   JamAI response status:", err.response.status);
+      console.error("   JamAI response data:", JSON.stringify(err.response.data, null, 2));
     }
-    throw err;
+
+    // Return a fallback structured response
+    return {
+      scam_type: "Unknown",
+      explanation: "(Mock) JamAI unavailable or returned error. Falling back to heuristic analysis.",
+      risk_level: "Medium",
+      recommendation: "Do not click links or share credentials. Verify independently."
+    };
   }
 }
 
