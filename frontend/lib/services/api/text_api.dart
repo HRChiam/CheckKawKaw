@@ -41,20 +41,32 @@ class TextAPI {
         final data = jsonDecode(response.body);
 
         if (data['success'] == true && data['result'] != null) {
-          final Map<String, dynamic> aiData = Map<String, dynamic>.from(data['result']);
+          final Map<String, dynamic> aiData =
+              Map<String, dynamic>.from(data['result']);
 
-          // The parsing logic strictly moved from homeScreen.dart
+          // Parse Malay fields if available
           return TextAPI(
-            riskLevel: (aiData['risk_level'] ?? "Unknown").replaceAll('"', ''),
-            scamType: (aiData['scam_type'] ?? "Unknown").replaceAll('"', ''),
-            explanation: (aiData['explanation'] ?? "No explanation provided.").replaceAll('"', ''),
-            recommendation: (aiData['recommendation'] ?? "Stay vigilant.").replaceAll('"', ''),
+            riskLevel:
+                (aiData['risk_level_ms'] ?? aiData['risk_level'] ?? "Unknown")
+                    .replaceAll('"', ''),
+            scamType:
+                (aiData['scam_type_ms'] ?? aiData['scam_type'] ?? "Unknown")
+                    .replaceAll('"', ''),
+            explanation: (aiData['explanation_ms'] ??
+                    aiData['explanation'] ??
+                    "No explanation provided.")
+                .replaceAll('"', ''),
+            recommendation: (aiData['recommendation_ms'] ??
+                    aiData['recommendation'] ??
+                    "Stay vigilant.")
+                .replaceAll('"', ''),
           );
         } else {
           return TextAPI.error("Server error: ${data['error']}");
         }
       } else {
-        return TextAPI.error("Connection failed (Status: ${response.statusCode})");
+        return TextAPI.error(
+            "Connection failed (Status: ${response.statusCode})");
       }
     } catch (e) {
       return TextAPI.error("Error: $e");
