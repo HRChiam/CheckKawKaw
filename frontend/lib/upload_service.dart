@@ -1,47 +1,44 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-
+import 'services/ip.dart';
 class UploadService {
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: "https://your-backend-url.com", // ✅ change this!
+      baseUrl: configBaseUrl, // Local backend
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 20),
     ),
   );
 
-  static Future<String?> uploadFile(String path, {bool isFinal = false}) async {
+  static Future<Map<String, dynamic>?> uploadFile(String path, {required String phoneCallState, required String phoneLogId}) async {
     try {
       final file = File(path);
-
       if (!file.existsSync()) {
         print("❌ File not found: $path");
         return null;
       }
 
       final formData = FormData.fromMap({
-        'is_final': isFinal,
-        'audio': await MultipartFile.fromFile(
+        'file': await MultipartFile.fromFile(
           path,
           filename: path.split("/").last,
         ),
+        'phone-call-state': phoneCallState,
+        'phone-log-id': phoneLogId,
       });
 
       final response = await _dio.post(
-        "/upload-audio",
+        "/phone/chunk",
         data: formData,
       );
 
       print("✅ Uploaded successfully → ${response.statusCode}");
-
-      final risk = response.data["risk"];
-      print("🚨 Risk level from AI → $risk");
+      print("🚨 Backend response → ${response.data}");
 
       await file.delete();
       print("🗑️ Deleted local file → $path");
 
-      return risk;
-
+      return response.data;
     } catch (e) {
       print("🚨 Upload failed → $e");
     }

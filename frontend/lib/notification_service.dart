@@ -1,5 +1,4 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'record_service.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -20,6 +19,18 @@ class NotificationService {
         }
       },
     );
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'risk_alerts', // id
+      'High Risk Alerts', // title
+      description: 'Notifications for detected scams',
+      importance: Importance.max, // Max importance for heads-up display
+      playSound: true,
+    );
+
+    await _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
   static Future showUnknownCaller(String number) async {
@@ -52,20 +63,22 @@ class NotificationService {
     );
   }
 
-  static Future showHighRiskAlert() async {
-    const androidDetails = AndroidNotificationDetails(
-      'risk_alerts',
+  static Future showHighRiskAlert(String cautionMessage) async {
+    final androidDetails = AndroidNotificationDetails(
+      'risk_alerts', // Must match the channel ID created above
       'High Risk Alerts',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      fullScreenIntent: true, // ✅ Helps force it to show over other apps
+      styleInformation: BigTextStyleInformation(cautionMessage),
     );
 
     await _plugin.show(
       99,
       '⚠️ Scam Risk Detected',
-      'This call may be dangerous. Stay alert.',
-      const NotificationDetails(android: androidDetails),
+      cautionMessage,
+      NotificationDetails(android: androidDetails),
     );
   }
 }

@@ -38,17 +38,12 @@ function getColText(columnData) {
   return null;
 }
 
+// 1. Analyze Text (Step 3 of Pipeline)
 export async function addTextRow(textMess) {
   try {
     if (!jamai) {
-      console.warn('⚠️  Skipping JamAI call because client is not initialized. Returning mock heuristic result.');
-      const mockAiData = {
-        scam_type: "Unknown",
-        explanation: "(Mock) JamAI unavailable or missing credentials. Falling back to heuristic analysis.",
-        risk_level: "Medium",
-        recommendation: "Do not click links or share credentials. Verify sender independently."
-      };
-      return mockAiData;
+      console.warn('⚠️ JamAI not initialized.');
+      return { risk_level: "Medium", recommendation: "Service unavailable." };
     }
     const result = await jamai.table.addRow({
       table_type: "action",
@@ -66,57 +61,39 @@ export async function addTextRow(textMess) {
 
     const columns = result.rows[0].columns;
 
-    // Extract the 4 specific columns from your CSV
-    const aiData = {
+    return {
       scam_type: getColText(columns['type-of-scam']) || "Unknown",
       explanation: getColText(columns['explanation']) || "No explanation provided.",
       risk_level: getColText(columns['risk-level']) || "Unknown",
       recommendation: getColText(columns['recommendations']) || "Stay vigilant."
     };
 
-    return aiData;
-
   } catch (err) {
-    console.error("❌ JamAI API Error:", err && err.message ? err.message : err);
-    // If the API returned a response body, log it for debugging
-    if (err && err.response) {
-      try {
-        console.error('   JamAI response status:', err.response.status);
-        console.error('   JamAI response data:', JSON.stringify(err.response.data, null, 2));
-      } catch (e) {
-        console.error('   Could not serialize err.response');
-      }
-    }
-
-    // Return a mock structured aiData so callers get a consistent object
-    const mockAiData = {
-      scam_type: "Unknown",
-      explanation: "(Mock) JamAI unavailable or returned error 422. Falling back to heuristic analysis.",
-      risk_level: "Medium",
-      recommendation: "Do not click links or share credentials. Verify sender independently."
-    };
-
-    return mockAiData;
+    console.error("❌ JamAI Text API Error:", err.message);
+    return { risk_level: "Unknown", recommendation: "Analysis failed." };
   }
 }
 
-//PHONECALL
-export async function addPhoneRow(audioPath) {
+// 2. Upload & Transcribe Audio (Step 1 of Pipeline)
+export async function addPhoneRow(audioPath, phoneCallState, phoneLogId) {
   try {
-    // 1. Upload file to Jamaibase v2
+    if (!fs.existsSync(audioPath)) {
+      console.error(`❌ File not found locally: ${audioPath}`);
+      return { transcript: "Error: Audio file missing on server." };
+    }
+
+    // Upload file to Jamaibase v2
     const ext = path.extname(audioPath).toLowerCase();
     let mimeType = 'application/octet-stream';
-    if (ext === '.mp3') mimeType = 'audio/mpeg';
+    
+    // ✅ Explicit Mapping for JamAI
     if (ext === '.wav') mimeType = 'audio/wav';
+    if (ext === '.mp3') mimeType = 'audio/mpeg';
+    if (ext === '.m4a') mimeType = 'audio/mp4';
+
+    console.log(`📤 Uploading to JamAI: ${path.basename(audioPath)} (${mimeType})`);
 
     const form = new FormData();
-    console.log('Uploading file:', audioPath);
-    console.log('Detected extension:', ext);
-    console.log('Using MIME type:', mimeType);
-    console.log('Form append options:', {
-      filename: path.basename(audioPath),
-      contentType: mimeType,
-    });
     form.append('file', fs.createReadStream(audioPath), {
       filename: path.basename(audioPath),
       contentType: mimeType,
@@ -133,103 +110,34 @@ export async function addPhoneRow(audioPath) {
         },
       }
     );
-    const fileId = uploadRes.data.file_id;
 
-    // 2. Pass fileId to JamAI as the audio column
+    // ✅ Get URI
+    const fileUri = uploadRes.data.uri || uploadRes.data.file_uri || uploadRes.data.url;
+
+    if (!fileUri) {
+      throw new Error("File upload returned no URI");
+    }
+
+    // Send to Audio Table
     const result = await jamai.table.addRow({
       table_type: "action",
       table_id: "phone-audio-detect-scam",
       data: [{
-        audio: fileId,
-        "phone-call-state": "start"
+        "audio": fileUri, 
+        "phone-call-state": phoneCallState,
+        "phone-log-id": phoneLogId
       }]
     });
 
     if (result && result.rows && result.rows.length > 0) {
-      const caution = result.rows[0].columns['caution-message'].choices[0].message.content;
-      return caution;
+      return result.rows[0].columns;
     }
-    return "Analysis could not be completed.";
+    return { transcript: "Analysis could not be completed." };
 
   } catch (err) {
-    console.error("❌ JamAI API Message:", err.message);
+    console.error("❌ JamAI Audio API Error:", err.message);
     if (err.response) {
-      console.error('❌ JamAI API Response:', err.response.data);
-    }
-    throw err;
-  }
-}
-
-//IMAGE
-export async function addImageRow(imagePath) {
-  try {
-    // 1. Upload file to Jamaibase v2
-    const ext = path.extname(imagePath).toLowerCase();
-    let mimeType = 'application/octet-stream';
-    if (ext === '.png') mimeType = 'image/png';
-    if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
-    if (ext === '.gif') mimeType = 'image/gif';
-    if (ext === '.webp') mimeType = 'image/webp';
-
-    console.log('Uploading file:', imagePath);
-
-    const form = new FormData();
-    console.log('Uploading file:', imagePath);
-    console.log('Detected extension:', ext);
-    console.log('Using MIME type:', mimeType);
-    console.log('Form append options:', {
-      filename: path.basename(imagePath),
-      contentType: mimeType,
-    });
-    form.append('file', fs.createReadStream(imagePath), {
-      filename: path.basename(imagePath),
-      contentType: mimeType,
-    });
-
-    const uploadRes = await axios.post(
-      'https://api.jamaibase.com/api/v2/files/upload',
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          Authorization: `Bearer ${process.env.JAMAI_TOKEN}`,
-          'X-PROJECT-ID': process.env.JAMAI_PROJECT_ID,
-        },
-      }
-    );
-    const fileUri = uploadRes.data.uri;  // use the URI returned by JamAI
-    console.log(uploadRes.data)
-
-    // 2. Pass fileId to JamAI as the image column
-    const result = await jamai.table.addRow({
-      table_type: "action",
-      table_id: "image-detect-scam",
-      data: [{
-        image: fileUri,
-      }]
-    });
-
- if (!result.rows || result.rows.length === 0) {
-      console.error("❌ JamAI returned no rows.");
-      return null;
-    }
-
-    const columns = result.rows[0].columns;
-
-    // 4. Extract structured AI data
-    const aiData = {
-      scam_type: getColText(columns['type-of-scam']) || "Unknown",
-      explanation: getColText(columns['explanation']) || "No explanation provided.",
-      risk_level: getColText(columns['risk-level']) || "Unknown",
-      recommendation: getColText(columns['recommendations']) || "Stay vigilant."
-    };
-
-    return aiData;
-
-  } catch (err) {
-    console.error("❌ JamAI API Error:", err.message);
-    if (err.response) {
-      console.error('❌ JamAI API Response:', err.response.data);
+      console.error('❌ JamAI Response Data:', JSON.stringify(err.response.data, null, 2));
     }
 
     // Return mock structured data if JamAI fails
@@ -298,11 +206,113 @@ export async function addAudioRow(audioPath) {
   }
 }
 
-// Test JamAI
-//THIS IS JUST FOR TESTING PURPOSE ONLY. REMOVE LATER.
-/*
-(async () => {
-  const result = await addTextRow("This is a sample text to check for scam.");
-  console.log("Test output:", result);
-})();*/
+// 3. Get Max ID
+export async function getMaxPhoneLogId() {
+  try {
+    let maxId = 0;
+    let offset = 0;
+    const limit = 100;
+    let more = true;
+    while (more) {
+      const result = await jamai.table.listRows({
+        table_type: "action",
+        table_id: "phone-audio-detect-scam",
+        limit,
+        offset,
+      });
+      const items = result.items || [];
+      for (const item of items) {
+        let val = 0;
+        if (item['phone-log-id']) {
+          if (typeof item['phone-log-id'] === 'object') {
+            val = parseInt(item['phone-log-id'].value || item['phone-log-id'].text || item['phone-log-id'], 10);
+          } else {
+            val = parseInt(item['phone-log-id'], 10);
+          }
+        }
+        if (!isNaN(val) && val > maxId) maxId = val;
+      }
+      offset += items.length;
+      more = items.length === limit;
+    }
+    return maxId;
+  } catch (err) {
+    console.error("❌ Error getting max phone-log-id:", err.message);
+    return 0;
+  }
+}
+
+// 4. Final Analysis (Optional, if used separately)
+export async function addFinalPhoneAnalysis(fullTranscript, phoneLogId) {
+  // This basically just re-uses addTextRow now
+  return await addTextRow(fullTranscript);
+}
+
+// ✅ 5. RESET TABLE FUNCTION (This was missing!)
+export async function resetTable() {
+  try {
+    console.log("🧹 Cleaning up JamAI table for new call...");
+    let offset = 0;
+    const limit = 100;
+    let more = true;
+    
+    // 1. Fetch all Row IDs
+    const allRowIds = [];
+    while (more) {
+      const result = await jamai.table.listRows({
+        table_type: "action",
+        table_id: "phone-audio-detect-scam",
+        limit,
+        offset,
+      });
+      
+      if (result.items && result.items.length > 0) {
+        result.items.forEach(row => allRowIds.push(row.ID));
+      }
+      
+      offset += result.items.length;
+      more = (result.items.length === limit);
+    }
+
+    if (allRowIds.length === 0) {
+      console.log("✨ Table is already empty.");
+      return;
+    }
+
+    // 2. Delete them
+    console.log(`🗑️ Deleting ${allRowIds.length} old rows...`);
+    for (const rowId of allRowIds) {
+        await jamai.table.deleteRow(
+            "action",
+            "phone-audio-detect-scam",
+            rowId
+        );
+    }
+    console.log("✨ Table memory cleared!");
+
+  } catch (err) {
+    console.error("⚠️ Warning: Failed to reset table (Start might be messy):", err.message);
+  }
+}
+
+//testing only
+// (async () => {
+//   try {
+//     console.log("max phone log id: ",await getMaxPhoneLogId());
+//   } catch (e) {
+//     console.error(e);
+//   }
+// })();
+
+// export function isJamaiReady() {
+//   return !!jamai;
+// }
+
+// export function getJamaiStatus() {
+//   return {
+//     tokenPresent: !!JAMAI_TOKEN,
+//     projectIdPresent: !!JAMAI_PROJECT_ID,
+//     initialized: !!jamai
+//   };
+// }
 
