@@ -10,12 +10,12 @@ class CallRecorder {
 
   static bool userApproved = false;
   static bool _isRecording = false;
-  static bool _isUploading = false; // ✅ Prevent overlapping uploads
-  static String phone_call_state = "start";
+  static bool _isUploading = false;
   static String? phone_log_id;
 
   static Future<String> _newFilePath() async {
     final dir = await getApplicationDocumentsDirectory();
+    // ✅ Use WAV + 8000Hz (Magic Combo)
     final fileName = "chunk_${DateTime.now().millisecondsSinceEpoch}.wav"; 
     return "${dir.path}/$fileName";
   }
@@ -27,7 +27,10 @@ class CallRecorder {
     _timer?.cancel();
     _timer = null;
     _isRecording = true;
-    _isUploading = false; // Reset upload flag
+    _isUploading = false;
+    
+    // Reset ID for the new call
+    phone_log_id = null; 
 
     if (!await _recorder.hasPermission()) {
       print("❌ No microphone permission");
@@ -36,52 +39,44 @@ class CallRecorder {
 
     final path = await _newFilePath();
 
-    // 1. Start Recording
+    // 1. Start Recording Immediately
     await _recorder.start(
       const RecordConfig(
         encoder: AudioEncoder.wav, 
         bitRate: 16000,            
-        sampleRate: 8000,          
-        numChannels: 1,            
+        sampleRate: 8000,  // 8kHz = Small size
+        numChannels: 1,    // Mono = Small size
       ),
       path: path,
     );
 
     print("🎤 Recording started → $path");
-    phone_call_state = "start";
-    phone_log_id = null; 
 
-    // 2. Send First Chunk AND WAIT for ID
-    // We do NOT start the timer yet. We wait for the backend to give us an ID.
-    await sendChunk(first: true);
-
-    // 3. Only start timer if we are still recording
-    if (_isRecording) {
-      _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
-        phone_call_state = "middle";
-        await sendChunk();
-      });
-    }
+    // 🛑 CHANGE: Do NOT send an empty chunk here.
+    // We just start the timer immediately.
+    
+    // 2. Start Timer (10s is safe for Free Plan)
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await sendChunk();
+    });
   }
 
-  static Future sendChunk({bool first = false}) async {
-    // ✅ Prevent overlap: If previous upload is still stuck, skip this beat
+  static Future sendChunk() async {
     if (_isUploading) {
-      print("⏳ Previous upload still pending. Skipping this chunk...");
+      print("⏳ Previous upload pending. Skipping overlap.");
       return;
     }
 
-    _isUploading = true; // Lock
+    _isUploading = true;
 
+    // 1. Stop & Capture Audio
     final prevPath = await _recorder.stop();
-
     if (prevPath == null) {
-      print("⚠️ No chunk to send");
       _isUploading = false;
       return;
     }
 
-    // Immediately start next recording
+    // 2. Restart Recorder Immediately
     final newPath = await _newFilePath();
     await _recorder.start(
       const RecordConfig(
@@ -93,33 +88,31 @@ class CallRecorder {
       path: newPath,
     );
 
-    // Upload
-    final state = first ? "start" : "middle";
-    final logId = phone_log_id ?? '';
+    // 3. Determine State Dynamically
+    // If we don't have an ID yet, this MUST be the start.
+    final String state = (phone_log_id == null) ? "start" : "middle";
+    final String logIdToSen = phone_log_id ?? '';
 
-    print("📤 Sending chunk ($state) | ID: $logId");
+    print("📤 Sending chunk ($state) | ID: $logIdToSen");
 
     try {
-      final response = await UploadService.uploadFile(prevPath, phoneCallState: state, phoneLogId: logId);
+      final response = await UploadService.uploadFile(prevPath, phoneCallState: state, phoneLogId: logIdToSen);
 
-      // ✅ CRITICAL: Capture ID
+      // Capture ID from backend
       if (response != null && response['phoneLogId'] != null) {
         phone_log_id = response['phoneLogId'].toString();
-        print("📞 Updated phone_log_id: $phone_log_id");
-      } else if (first) {
-        print("❌ START FAILED: No ID returned. Retrying 'start' state next time.");
-        // Keep state as 'start' so next chunk tries to get an ID again
-        phone_call_state = "start"; 
+        print("📞 ID Synchronized: $phone_log_id");
       }
 
+      // Check Alerts
       if (response != null && response['send_alert'] == true) {
         String msg = response['caution_message'] ?? "High risk scam detected.";
         NotificationService.showHighRiskAlert(msg);
       }
     } catch (e) {
-      print("🚨 Chunk Upload Error: $e");
+      print("🚨 Upload Error: $e");
     } finally {
-      _isUploading = false; // Unlock
+      _isUploading = false;
     }
   }
 
@@ -133,6 +126,7 @@ class CallRecorder {
 
     print("✅ Sending Final Chunk");
     
+    // Send 'end' state
     await UploadService.uploadFile(finalPath, phoneCallState: "end", phoneLogId: phone_log_id ?? '');
     
     phone_log_id = null;
