@@ -33,7 +33,7 @@ class AudioAPI {
       var request = http.MultipartRequest('POST', url);
 
       request.files.add(await http.MultipartFile.fromPath(
-        'file', 
+        'file',
         audioFile.path,
       ));
 
@@ -45,17 +45,33 @@ class AudioAPI {
         dynamic resultData = data;
 
         if (data is Map && data.containsKey('result')) {
-           resultData = data['result'];
+          resultData = data['result'];
         }
 
         if (resultData != null) {
-          final Map<String, dynamic> aiData = Map<String, dynamic>.from(resultData);
+          final Map<String, dynamic> aiData =
+              Map<String, dynamic>.from(resultData);
 
+          // Parse Malay fields if available
           return AudioAPI(
-            riskLevel: (aiData['risk_level'] ?? "Unknown").toString().replaceAll('"', ''),
-            scamType: (aiData['scam_type'] ?? "Unknown").toString().replaceAll('"', ''),
-            explanation: (aiData['explanation'] ?? "No explanation provided.").toString().replaceAll('"', ''),
-            recommendation: (aiData['recommendation'] ?? "Stay vigilant.").toString().replaceAll('"', ''),
+            riskLevel:
+                (aiData['risk_level_ms'] ?? aiData['risk_level'] ?? "Unknown")
+                    .toString()
+                    .replaceAll('"', ''),
+            scamType:
+                (aiData['scam_type_ms'] ?? aiData['scam_type'] ?? "Unknown")
+                    .toString()
+                    .replaceAll('"', ''),
+            explanation: (aiData['explanation_ms'] ??
+                    aiData['explanation'] ??
+                    "No explanation provided.")
+                .toString()
+                .replaceAll('"', ''),
+            recommendation: (aiData['recommendation_ms'] ??
+                    aiData['recommendation'] ??
+                    "Stay vigilant.")
+                .toString()
+                .replaceAll('"', ''),
           );
         } else {
           return AudioAPI.error("Server returned empty results.");

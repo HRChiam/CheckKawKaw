@@ -37,7 +37,7 @@ class ImageAPI {
       // Attach image file to form-data under fieldname "file"
       request.files.add(
         await http.MultipartFile.fromPath(
-          'file',            // <-- must match req.file.fieldname in backend
+          'file', // <-- must match req.file.fieldname in backend
           imageFile.path,
         ),
       );
@@ -49,22 +49,32 @@ class ImageAPI {
       if (response.statusCode == 200) {
         final data = jsonDecode(body);
 
-   //     if (data['success'] == true && data['result'] != null) {
-     //     final Map<String, dynamic> aiData = Map<String, dynamic>.from(data['result']);
-if (data['result'] != null) {
-    final aiData = Map<String, dynamic>.from(data['result']);
-          // The parsing logic strictly moved from homeScreen.dart
+        if (data['result'] != null) {
+          final aiData = Map<String, dynamic>.from(data['result']);
+
+          // Parse Malay fields if available
           return ImageAPI(
-            riskLevel: (aiData['risk_level'] ?? "Unknown").replaceAll('"', ''),
-            scamType: (aiData['scam_type'] ?? "Unknown").replaceAll('"', ''),
-            explanation: (aiData['explanation'] ?? "No explanation provided.").replaceAll('"', ''),
-            recommendation: (aiData['recommendation'] ?? "Stay vigilant.").replaceAll('"', ''),
+            riskLevel:
+                (aiData['risk_level_ms'] ?? aiData['risk_level'] ?? "Unknown")
+                    .replaceAll('"', ''),
+            scamType:
+                (aiData['scam_type_ms'] ?? aiData['scam_type'] ?? "Unknown")
+                    .replaceAll('"', ''),
+            explanation: (aiData['explanation_ms'] ??
+                    aiData['explanation'] ??
+                    "No explanation provided.")
+                .replaceAll('"', ''),
+            recommendation: (aiData['recommendation_ms'] ??
+                    aiData['recommendation'] ??
+                    "Stay vigilant.")
+                .replaceAll('"', ''),
           );
         } else {
           return ImageAPI.error("Server error: ${data['error']}");
         }
       } else {
-        return ImageAPI.error("Connection failed (Status: ${response.statusCode})");
+        return ImageAPI.error(
+            "Connection failed (Status: ${response.statusCode})");
       }
     } catch (e) {
       return ImageAPI.error("Error: $e");

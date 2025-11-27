@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'main.dart'; // To access AppTheme
 
 class AnalysisScreen extends StatelessWidget {
-  final String riskLevel; 
-  final String scamType;  
+  final String riskLevel;
+  final String scamType;
   final String explanation;
   final String recommendation;
 
@@ -18,22 +18,28 @@ class AnalysisScreen extends StatelessWidget {
   Color _getRiskColor() {
     switch (riskLevel.toLowerCase()) {
       case 'high risk':
+      case 'risiko tinggi': // Malay translation
         return const Color(0xFFFF4B4B);
       case 'medium risk':
-        return const Color(0xFFFFA726); 
+      case 'risiko sederhana': // Malay translation
+        return const Color(0xFFFFA726);
       case 'low risk':
+      case 'risiko rendah': // Malay translation
       default:
-        return const Color(0xFF0ABAB5); 
+        return const Color(0xFF0ABAB5);
     }
   }
 
   IconData _getRiskIcon() {
     switch (riskLevel.toLowerCase()) {
       case 'high':
+      case 'tinggi': // Malay translation
         return Icons.gpp_bad_rounded;
       case 'medium':
+      case 'sederhana': // Malay translation
         return Icons.warning_amber_rounded;
       case 'low':
+      case 'rendah': // Malay translation
       default:
         return Icons.verified_user_rounded;
     }
@@ -68,7 +74,7 @@ class AnalysisScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: riskColor.withValues(alpha: 0.15),
+                    color: riskColor.withOpacity(0.15),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   )
@@ -79,7 +85,7 @@ class AnalysisScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: riskColor.withValues(alpha: 0.1),
+                      color: riskColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(riskIcon, size: 48, color: riskColor),
@@ -115,9 +121,9 @@ class AnalysisScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.08),
+                color: AppTheme.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
@@ -170,7 +176,7 @@ class AnalysisScreen extends StatelessWidget {
                 border: Border.all(color: Colors.grey[200]!),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.05),
+                    color: Colors.grey.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -179,7 +185,8 @@ class AnalysisScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.lightbulb_outline, color: Colors.amber[700], size: 28),
+                  Icon(Icons.lightbulb_outline,
+                      color: Colors.amber[700], size: 28),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(

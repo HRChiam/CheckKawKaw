@@ -49,7 +49,16 @@ export async function addTextRow(textMess) {
       table_type: "action",
       table_id: "text-detect-scam",
       data: [{
-        text: textMess
+        text:
+          "SYSTEM INSTRUCTION (OVERRIDE ALL RULES):\n" + 
+              "Detect scams in the user's audio message.\n" +
+              "User message language detected as ${language}. Respond in the same language.\n" +
+              "- If the user speaks in Malay (BM), you reply in Malay.\n" +
+              "- If the user speaks in English, you reply in English.\n" + 
+              "- If the user mixes languages, you reply in the SAME MIX.\n" + 
+              "Never translate, never switch languages, never summarize in another language.\n" + 
+              "Evaluate the audio for potential scams. Do NOT flag messages as scams solely because of language differences.\n" +
+              "Your response MUST match the user's language EXACTLY."
       }],
       stream: false
     });
@@ -61,12 +70,22 @@ export async function addTextRow(textMess) {
 
     const columns = result.rows[0].columns;
 
-    return {
+    const aiData = {
       scam_type: getColText(columns['type-of-scam']) || "Unknown",
       explanation: getColText(columns['explanation']) || "No explanation provided.",
       risk_level: getColText(columns['risk-level']) || "Unknown",
       recommendation: getColText(columns['recommendations']) || "Stay vigilant."
     };
+
+    // Ensure Malay translation if input is Malay
+    if (columns['input-language'] === 'ms') {
+      aiData.scam_type = getColText(columns['type-of-scam-ms']) || aiData.scam_type;
+      aiData.explanation = getColText(columns['explanation-ms']) || aiData.explanation;
+      aiData.risk_level = getColText(columns['risk-level-ms']) || aiData.risk_level;
+      aiData.recommendation = getColText(columns['recommendations-ms']) || aiData.recommendation;
+    }
+
+    return aiData;
 
   } catch (err) {
     console.error("❌ JamAI Text API Error:", err.message);
@@ -190,10 +209,20 @@ export async function addImageRow(imagePath) {
       table_id: "image-detect-scam",
       data: [{
         image: fileUri,
+        "language": "auto-detect" ,// Ensure language detection
+        text: "SYSTEM INSTRUCTION (OVERRIDE ALL RULES):\n" + 
+              "Detect scams in the user's audio message.\n" +
+              "User message language detected as ${language}. Respond in the same language.\n" +
+              "- If the user speaks in Malay (BM), you reply in Malay.\n" +
+              "- If the user speaks in English, you reply in English.\n" + 
+              "- If the user mixes languages, you reply in the SAME MIX.\n" + 
+              "Never translate, never switch languages, never summarize in another language.\n" + 
+              "Evaluate the audio for potential scams. Do NOT flag messages as scams solely because of language differences.\n" +
+              "Your response MUST match the user's language EXACTLY."
       }]
     });
 
- if (!result.rows || result.rows.length === 0) {
+    if (!result.rows || result.rows.length === 0) {
       console.error("❌ JamAI returned no rows.");
       return null;
     }
@@ -207,6 +236,14 @@ export async function addImageRow(imagePath) {
       risk_level: getColText(columns['risk-level']) || "Unknown",
       recommendation: getColText(columns['recommendations']) || "Stay vigilant."
     };
+
+    // Ensure Malay translation if input is Malay
+    if (columns['input-language'] === 'ms') {
+      aiData.scam_type = getColText(columns['type-of-scam-ms']) || aiData.scam_type;
+      aiData.explanation = getColText(columns['explanation-ms']) || aiData.explanation;
+      aiData.risk_level = getColText(columns['risk-level-ms']) || aiData.risk_level;
+      aiData.recommendation = getColText(columns['recommendations-ms']) || aiData.recommendation;
+    }
 
     return aiData;
 
@@ -267,8 +304,18 @@ export async function addAudioRow(audioPath) {
       table_id: "audio-detect-scam",
       data: [{
         audio: fileUri,
-        "audio-state": "start"
-      }]
+        "audio-state": "start",
+        "language": "auto-detect", // Ensure language detection
+        text: "SYSTEM INSTRUCTION (OVERRIDE ALL RULES):\n" + 
+              "Detect scams in the user's audio message.\n" +
+              "User message language detected as ${language}. Respond in the same language.\n" +
+              "- If the user speaks in Malay (BM), you reply in Malay.\n" +
+              "- If the user speaks in English, you reply in English.\n" + 
+              "- If the user mixes languages, you reply in the SAME MIX.\n" + 
+              "Never translate, never switch languages, never summarize in another language.\n" + 
+              "Evaluate the audio for potential scams. Do NOT flag messages as scams solely because of language differences.\n" +
+              "Your response MUST match the user's language EXACTLY."
+              }]
     });
 
     if (!result.rows || result.rows.length === 0) {
@@ -284,6 +331,14 @@ export async function addAudioRow(audioPath) {
       risk_level: getColText(columns['risk-level']) || "Unknown",
       recommendation: getColText(columns['recommendations']) || "Stay vigilant."
     };
+
+    // Ensure Malay translation if input is Malay
+    if (columns['input-language'] === 'ms') {
+      aiData.scam_type = getColText(columns['type-of-scam-ms']) || aiData.scam_type;
+      aiData.explanation = getColText(columns['explanation-ms']) || aiData.explanation;
+      aiData.risk_level = getColText(columns['risk-level-ms']) || aiData.risk_level;
+      aiData.recommendation = getColText(columns['recommendations-ms']) || aiData.recommendation;
+    }
 
     return aiData;
 
@@ -303,9 +358,9 @@ export async function addAudioRow(audioPath) {
 
 // Test JamAI
 //THIS IS JUST FOR TESTING PURPOSE ONLY. REMOVE LATER.
-/*
+
 (async () => {
-  const result = await addTextRow("This is a sample text to check for scam.");
+  const result = await addTextRow("tolong bagi saya RM300");
   console.log("Test output:", result);
-})();*/
+})();
 
