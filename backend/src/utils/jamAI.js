@@ -49,16 +49,17 @@ export async function addTextRow(textMess) {
       table_type: "action",
       table_id: "text-detect-scam",
       data: [{
-        text:
-          "SYSTEM INSTRUCTION (OVERRIDE ALL RULES):\n" + 
-              "Detect scams in the user's audio message.\n" +
-              "User message language detected as ${language}. Respond in the same language.\n" +
-              "- If the user speaks in Malay (BM), you reply in Malay.\n" +
-              "- If the user speaks in English, you reply in English.\n" + 
-              "- If the user mixes languages, you reply in the SAME MIX.\n" + 
-              "Never translate, never switch languages, never summarize in another language.\n" + 
-              "Evaluate the audio for potential scams. Do NOT flag messages as scams solely because of language differences.\n" +
-              "Your response MUST match the user's language EXACTLY."
+        text: "SYSTEM INSTRUCTION: Your task is to analyse the user's audio message and determine whether it shows indicators of a potential scam.\n" +
+        "Language Behaviour: - Detect the language used in the user's message.\n" +
+        "- Respond in the same language as the user (Malay → Malay, English → English).\n" +
+        "- Do not translate, switch languages, or provide explanations in a different language.\n" +
+        "Evaluation Guidelines:\n" +
+        "- Focus on content, intent, and behavioural patterns commonly associated with scams\n" +
+        "  (e.g., urgency, requests for personal data, OTP codes, financial transfers).\n" +
+        "- Do not label a message as a scam based solely on unfamiliar terms or language differences.\n" +
+        "- If there are risk indicators, explain why they are concerning and suggest safe next steps.\n" +
+        "- If there are no clear scam signals, state that no risks were detected, while encouraging caution.\n" +
+        "User Message: " + textMess
       }],
       stream: false
     });
